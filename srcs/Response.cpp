@@ -108,7 +108,7 @@ void Response::makeErrorResponse(int status, Location *location)
 		ss << this->body.length();
 		ss >> str;
 		this->generateErrorPage(status);
-		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
+		this->headers.insert(std::pair<std::string, std::string>("content-length", str));
 		this->makeResponse();
 		this->connection->setStatus(RESPONSE_COMPLETE);
 		return;
@@ -282,13 +282,13 @@ void Response::makeResponse(std::string method)
 	(void)method;
 	// std::cout << "status: " <<  this->status << std::endl;
 	/* HEADER */
-	if (this->headers.find("Content-Length") == this->headers.end())
+	if (this->headers.find("content-length") == this->headers.end())
 	{
 		std::stringstream ss;
 		std::string str;
 		ss << this->body.length();
 		ss >> str;
-		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
+		this->headers.insert(std::pair<std::string, std::string>("content-length", str));
 	}
 	// std::cout << "Content Length: " << this->headers["Content-Length"] << std::endl;
 	if (this->start_line.find("HTTP") == std::string::npos)
@@ -482,7 +482,7 @@ int Response::makeResponseErrorResource(int curr_event_fd)
 	{
 		std::stringstream ss;
 		ss << connection->getResponse().getBody().length();
-		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("Content-Length", ss.str()));
+		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("content-length", ss.str()));
 		connection->getResponse().makeResponse();
 
 		Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);

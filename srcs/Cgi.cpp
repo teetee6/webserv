@@ -137,7 +137,7 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	// }
 
 	// content_length 을 cgi_env에 Insert
-	iter = request.getHeaders().find("Content-Length");
+	iter = request.getHeaders().find("content-length");
 	if (iter != request.getHeaders().end() && iter->second != "")
 		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", iter->second));
 	else if (((iter = request.getHeaders().find("Transfer-Encoding")) != request.getHeaders().end()) && iter->second == "chunked")

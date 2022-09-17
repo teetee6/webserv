@@ -244,7 +244,7 @@ void Request::parseHeaders(void)
 			value = line.substr(idx + 1);
 		this->headers.insert(std::pair<std::string, std::string>(key, value));
 		this->raw_header.erase(0, line_end + 2);
-		std::cout << "[[[[" << key << "]]]]\n";
+		// std::cout << "[[[[" << key << "]]]]\n";
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
