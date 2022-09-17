@@ -3,12 +3,14 @@
 FdType::FdType(t_FdType type)
 {
 	this->type = type;
+	this->write_idx = 0;
 }
 
 FdType::FdType(t_FdType type, Connection *connection)
 {
 	this->type = type;
 	this->connection = connection;
+	this->write_idx = 0;
 }
 
 FdType::FdType(t_FdType type, Connection *connection, pid_t pid)
@@ -16,6 +18,7 @@ FdType::FdType(t_FdType type, Connection *connection, pid_t pid)
 	this->type = type;
 	this->connection = connection;
 	this->pid = pid;
+	this->write_idx = 0;
 }
 
 FdType::FdType(t_FdType type, Connection *connection, pid_t pid, std::string data)
@@ -24,6 +27,7 @@ FdType::FdType(t_FdType type, Connection *connection, pid_t pid, std::string dat
 	this->connection = connection;
 	this->pid = pid;
 	this->data = data;
+	this->write_idx = 0;
 }
 
 FdType::FdType(t_FdType type, Connection *connection, std::string data)
@@ -31,6 +35,7 @@ FdType::FdType(t_FdType type, Connection *connection, std::string data)
 	this->type = type;
 	this->connection = connection;
 	this->data = data;
+	this->write_idx = 0;
 }
 
 FdType::~FdType()
