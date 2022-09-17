@@ -71,6 +71,6 @@ void Kqueue::createChangeListEvent(int fd, std::string mode, std::string disable
 			EV_SET(&event, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, NULL, NULL, NULL);
 		this->pushChangeList(event);
 	}
-	std::cout << "fd(" << fd << ")를\t" << mode << "모드로 Event 등록!" << std::endl;
-	std::cout << "Kqueue::: changeList- " << this->getChangeList().size() << std::endl;
+	// std::cout << "fd(" << fd << ")를\t" << mode << "모드로 Event 등록!" << std::endl;
+	// std::cout << "Kqueue::: changeList- " << this->getChangeList().size() << std::endl;
 }

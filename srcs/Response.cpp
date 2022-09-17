@@ -352,8 +352,8 @@ void Response::makeDeleteResponse(Request &request)
 
 int Response::makeResponseGerneral(int curr_event_fd, Request &request, long content_length)
 {
-	std::cout << "FILE_FDTYPE READ!!!\n";
-	std::cout << "read from [" << curr_event_fd << "]\n";
+	// std::cout << "FILE_FDTYPE READ!!!\n";
+	// std::cout << "read from [" << curr_event_fd << "]\n";
 	// std::cout << content_length << std::endl;
 	char buf[BUFFER_SIZE];
 	int read_size;
@@ -374,12 +374,12 @@ int Response::makeResponseGerneral(int curr_event_fd, Request &request, long con
 
 	std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
 	for (std::map<int, FdType *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
-		std::cout << iter->first << " AND, " << iter->second << std::endl;
-	std::cout << "is this seen?\n";
+	// 	std::cout << iter->first << " AND, " << iter->second << std::endl;
+	// std::cout << "is this seen?\n";
 
 	this->status = 200;
 	this->makeResponse();
-	std::cout << "is this seen2 ?\n";
+	// std::cout << "is this seen2 ?\n";
 	// std::cout << "[raw_response]\n" << this->raw_response << "\n";
 	request.getConnection()->setStatus(RESPONSE_COMPLETE);
 	return 0;
@@ -399,7 +399,7 @@ int Response::makeResponseCgi(int curr_event_fd, Request &request)
 	buf[read_size] = '\0';
 
 	this->cgi_raw += buf;
-	std::cout << "buf = " << buf << std::endl;
+	// std::cout << "buf = " << buf << std::endl;
 	if (read_size != 0)
 		return 0;
 	Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);

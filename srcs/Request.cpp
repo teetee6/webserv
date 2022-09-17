@@ -154,7 +154,7 @@ bool Request::parseRequest(void)
 
 // for(int i =0; i<50; i++) std::cout << "d";
 // 		std::cout << std::endl;
-		std::cout << this->body_type << std::endl;
+		// std::cout << this->body_type << std::endl;
 
 		if (_body_type == NOBODY)
 		{
@@ -272,7 +272,7 @@ bool Request::setBodyType(void)
 // only fill into this->rawbody
 bool Request::parseBody(void)
 {
-	std::cout << "바디파싱0\n";
+	// std::cout << "바디파싱0\n";
 
 	std::multimap<std::string, std::string>::iterator iter = this->headers.find("content-length"); // map 으로 바꾸자
 	std::size_t content_length = 0;
@@ -282,20 +282,20 @@ bool Request::parseBody(void)
 
 	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
 	{
-		std::cout << "ㅂㅡ디파싱1\n";
+		// std::cout << "ㅂㅡ디파싱1\n";
 		
 		this->raw_body += this->temp_body.substr(0, content_length);
 		temp_body.clear();
-		std::cout << "확인용333\n";
-		std::cout << this->temp_body << std::endl;
-		std::cout << "확인용444\n";
+		// std::cout << "확인용333\n";
+		// std::cout << this->temp_body << std::endl;
+		// std::cout << "확인용444\n";
 		this->parse_status = PARSING_HEADER;
 		return (true);
 	}
 	
 	if (this->body_type == CHUNKED)
 	{
-		std::cout << "ㅂㅡ디파싱2\n";
+		// std::cout << "ㅂㅡ디파싱2\n";
 		std::size_t index = this->temp_body.find("\r\n");
 		std::size_t chunk_size;
 
@@ -326,7 +326,7 @@ bool Request::parseBody(void)
 			index = this->temp_body.find("\r\n");
 		}
 	}
-	std::cout << "ㅂㅡ디파싱3\n";
+	// std::cout << "ㅂㅡ디파싱3\n";
 	
 	return (false);
 }

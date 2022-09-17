@@ -99,6 +99,9 @@ int Connection::readRequest(void)
 	}
 	buf[readed] = 0;
 	
+	std::cout << "here----------------------------------------\n";
+	std::cout << buf << std::endl;
+	std::cout << "----------------------------------------here\n";
 	this->request.setRawRequest(buf);
 	if (this->request.parseRequest() == true)
 		this->status = REQUEST_COMPLETE;

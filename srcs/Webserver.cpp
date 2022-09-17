@@ -410,9 +410,9 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
-		std::cout << "확인용1\n";
-		std::cout << connection.getRequest().getRawBody() << std::endl;
-		std::cout << "확인용2\n";
+		// std::cout << "확인용1\n";
+		// std::cout << connection.getRequest().getRawBody() << std::endl;
+		// std::cout << "확인용2\n";
 		FdType *file_fd_inst = new FdType(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
 		setFdMap(put_fd, file_fd_inst);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(put_fd, "W");
@@ -541,52 +541,52 @@ void Webserver::disconnect_connection(Connection &connection)
 	if (this->getFdMap().size() == 0)
 		return ;
 
-	std::cout << "error1 " << std::endl;
+	// std::cout << "error1 " << std::endl;
 	Connection *connection_pointer = &connection;
 	std::vector<int> to_delete_fds;
 	FdType *monitor_fd = NULL;
 
 	std::map<int, FdType *> _fd_map = this->getFdMap();
-	std::cout << "error2 " << std::endl;
+	// std::cout << "error2 " << std::endl;
 	for (std::map<int, FdType *>::iterator iter = _fd_map.begin(); iter != _fd_map.end(); ++iter)
 	{
-		std::cout << "error2-2: " << iter->first << ", " << iter->second << std::endl;
+		// std::cout << "error2-2: " << iter->first << ", " << iter->second << std::endl;
 		monitor_fd = iter->second;
 		if (monitor_fd->getConnection() == connection_pointer)
 		{
-			std::cout << "error2-3: " << monitor_fd->getConnection()->getConnectionFd() << std::endl;
+			// std::cout << "error2-3: " << monitor_fd->getConnection()->getConnectionFd() << std::endl;
 			switch (monitor_fd->getType())
 			{
 				// case CONNECTION_FDTYPE:
 				case FILE_FDTYPE:
 				case CGI_WRITE_FDTYPE:
-					std::cout << "error3 " << std::endl;
+					// std::cout << "error3 " << std::endl;
 					to_delete_fds.push_back(iter->first);
-					std::cout << "error3-2 " << std::endl;
+					// std::cout << "error3-2 " << std::endl;
 					break;
 				case CGI_READ_FDTYPE:
-					std::cout << "error4 " << std::endl;
+					// std::cout << "error4 " << std::endl;
 					kill(monitor_fd->getPid(), SIGKILL);
 					break;
 			}
 		}
 	}
-	std::cout << "error5 " << std::endl;
+	// std::cout << "error5 " << std::endl;
 	for (std::vector<int>::const_iterator iter = to_delete_fds.begin(); iter != to_delete_fds.end(); ++iter)
 		clrFDonTable(*iter);
 
-	std::cout << "error6 " << std::endl;
+	// std::cout << "error6 " << std::endl;
 	int connection_fd = connection.getConnectionFd();
-	std::cout << "error7 " << std::endl;
+	// std::cout << "error7 " << std::endl;
 	connection.getServer()->getConnections().erase(connection_fd);
-	std::cout << "error8 " << std::endl;
+	// std::cout << "error8 " << std::endl;
 	clrFDonTable(connection_fd);
 	// std::cout << "error9 " << std::endl;
 }
 
 int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 {
-	std::cout << "write to [" << monitor_event_fd << "]\n";
+	// std::cout << "write to [" << monitor_event_fd << "]\n";
 	size_t res_idx = connection.getResponse().getResIdx();
 	int write_size = write(monitor_event_fd, connection.getResponse().getRawResponse().c_str() + res_idx, connection.getResponse().getRawResponse().length() - res_idx);
 	if (write_size == -1)
@@ -709,7 +709,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 	
 	if (monitor_event->flags & EV_ERROR)
 	{
-		std::cout << "is this seen-Error ?\n";
+		// std::cout << "is this seen-Error ?\n";
 		if (monitor_fd->getType() == SERVER_FDTYPE)
 			std::cerr << "Server Error!" << std::endl;
 		else if (monitor_fd->getType() == CONNECTION_FDTYPE)
@@ -758,7 +758,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 					{
 						std::cout<<"\read disconnect = "<< monitor_event->ident<<std::endl;
 						this->disconnect_connection(*connection); 
-						std::cout<<"==================\n"<<std::endl;
+						// std::cout<<"==================\n"<<std::endl;
 						break;
 					}
 				}
@@ -767,7 +767,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 			// std::cout << "status: " << connection->getStatus() << std::endl;
 			if (connection->getStatus() == REQUEST_COMPLETE)
 			{
-				std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
+				// std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
 				if (this->isValidRequestwithConfig(*connection) != 0)
 					return;

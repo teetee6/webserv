@@ -95,9 +95,9 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 
 		if (is_post)
 		{
-				std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!DATA!!!!!!\n";
-				std::cout << request.getRawBody() << std::endl;
-				std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+				// std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!DATA!!!!!!\n";
+				// std::cout << request.getRawBody() << std::endl;
+				// std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 
 			FdType *pipe_fd = new FdType(CGI_WRITE_FDTYPE, request.getConnection(), this->pid, request.getRawBody());
 			Webserver::getWebserverInst()->setFdMap(this->request_fd[1], pipe_fd);
@@ -146,7 +146,7 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 		std::string str;
 		ss << request.getRawBody().length();
 		ss >> str;
-		std::cout << "asdjklasdjaskldjaskldjaklsjdklasdjklasd" << std::endl;
+		// std::cout << "asdjklasdjaskldjaskldjaklsjdklasdjklasd" << std::endl;
 		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", str));
 	}
 	else
