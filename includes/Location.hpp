@@ -59,9 +59,6 @@ public:
 	const std::string &getAuthKey();
 	int getRedirectReturn();
 	const std::string &getRedirectAddr();
-
-
-	std::string autoIndexType(std::string &uri);
 };
 
 #endif

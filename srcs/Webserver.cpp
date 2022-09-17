@@ -410,6 +410,9 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
+		std::cout << "확인용1\n";
+		std::cout << connection.getRequest().getRawBody() << std::endl;
+		std::cout << "확인용2\n";
 		FdType *file_fd_inst = new FdType(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
 		setFdMap(put_fd, file_fd_inst);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(put_fd, "W");
@@ -672,13 +675,13 @@ bool Webserver::run()
 	Webserver::getWebserverInst()->initKqueue();
 	Webserver::getWebserverInst()->initServers();
 
-	struct timespec timeout;
-	timeout.tv_sec = 5;
-	timeout.tv_nsec = 0;
+	// struct timespec timeout;
+	// timeout.tv_sec = 0;
+	// timeout.tv_nsec = 0;
 
 	while (1)
 	{
-		int monitor_event_num = kevent(this->kq.getKqueue(), &this->kq.getChangeList()[0], this->kq.getChangeList().size(), this->kq.event_list, 1024, &timeout); 
+		int monitor_event_num = kevent(this->kq.getKqueue(), &this->kq.getChangeList()[0], this->kq.getChangeList().size(), this->kq.event_list, 1024, NULL); 
 		if (monitor_event_num < 0)
 		{
 			std::cerr << "kevent error" << std::endl;
@@ -707,13 +710,6 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 	if (monitor_event->flags & EV_ERROR)
 	{
 		std::cout << "is this seen-Error ?\n";
-		// std::cout << monitor_event->data << std::endl; //(9)
-		// std::cout << monitor_event->fflags << std::endl; //(0)
-		// std::cout << monitor_event->filter << std::endl; // EVFILT_READ (-1)
-		// std::cout << monitor_event->flags << std::endl; // (16389)
-		// std::cout << monitor_event->ident << std::endl; // 소켓번호 (리소스fd로 부터 읽네요)
-		// std::cout << monitor_event->udata << std::endl; // (0x0)
-		
 		if (monitor_fd->getType() == SERVER_FDTYPE)
 			std::cerr << "Server Error!" << std::endl;
 		else if (monitor_fd->getType() == CONNECTION_FDTYPE)
@@ -767,23 +763,6 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 					}
 				}
 				return;
-				// int check_error = 0;
-				// for(std::map<int, FdType *>::iterator it = this->getFdMap().begin(); it != this->getFdMap().end(); it++)
-				// {
-				// 	if (it->second && it->second->getType() == CONNECTION_FDTYPE)
-				// 	{
-				// 		if (check_error == 2)
-				// 			break;
-				// 		check_error++;
-				// 	}
-				// }
-				// if (check_error != 2)
-				// 	return;
-
-
-				// this->disconnect_connection(*connection);
-				// std::cout << "disconnected: " << monitor_event->ident << std::endl;
-				// return;
 			}
 			// std::cout << "status: " << connection->getStatus() << std::endl;
 			if (connection->getStatus() == REQUEST_COMPLETE)

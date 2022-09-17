@@ -219,7 +219,7 @@ void Response::makeRawResponse(void)
 	this->raw_response += "\r\n";
 	this->raw_response += this->body;
 }
-
+/*
 // separate cgi_raw into status, headers(only "Content-Type"),and body
 bool Response::applyCGIResponse(std::string &cgi_raw){
 	// php-cgi 처리
@@ -275,6 +275,7 @@ bool Response::applyCGIResponse(std::string &cgi_raw){
 		this->body = "";
 	return (true);
 }
+*/
 
 void Response::makeResponse(std::string method)
 {

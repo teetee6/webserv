@@ -38,11 +38,11 @@ test:
 	rm -rf ./tests/put_test/file_should_exist_after
 	./webserv configs/test.conf
 
-test_hyeonski:
-	${CC} ${DCFLAGS} ${SRCS} ${INC} -o ${NAME}
-	rm -rf ./tests/put_test/file_should_exist_after
-	rm -rf .res_*
-	./webserv configs/test_hyeonski.conf
+# test_hyeonski:
+# 	${CC} ${DCFLAGS} ${SRCS} ${INC} -o ${NAME}
+# 	rm -rf ./tests/put_test/file_should_exist_after
+# 	rm -rf .res_*
+# 	./webserv configs/test_hyeonski.conf
 
 bonus:
 	make WITH_BONUS=1 all

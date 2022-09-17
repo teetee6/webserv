@@ -139,6 +139,9 @@ void Request::initRequest(void)
 	this->path.clear();
 }
 
+// for(int i =0; i<50; i++) std::cout << "d";
+// 		std::cout << std::endl;
+
 bool Request::parseRequest(void)
 {
 	std::size_t index = this->raw_request.find("\r\n\r\n"); // the location of the boundary between HEADER and BODY
@@ -148,6 +151,11 @@ bool Request::parseRequest(void)
 		this->parseHeaders();
 		this->parse_status = PARSING_BODY;
 		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or CONTENT_LENGTH
+
+// for(int i =0; i<50; i++) std::cout << "d";
+// 		std::cout << std::endl;
+		std::cout << this->body_type << std::endl;
+
 		if (_body_type == NOBODY)
 		{
 			this->temp_body.clear();
@@ -236,6 +244,7 @@ void Request::parseHeaders(void)
 			value = line.substr(idx + 1);
 		this->headers.insert(std::pair<std::string, std::string>(key, value));
 		this->raw_header.erase(0, line_end + 2);
+		std::cout << "[[[[" << key << "]]]]\n";
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
@@ -252,7 +261,7 @@ bool Request::setBodyType(void)
 	if (iter != this->headers.end() && iter->second == "chunked")
 		return (this->body_type = CHUNKED);
 
-	iter = this->headers.find("Content-Length");
+	iter = this->headers.find("content-length");
 	if (iter != this->headers.end() && iter->second != "")
 	{
 		return (this->body_type = CONTENT_LENGTH);
@@ -263,7 +272,9 @@ bool Request::setBodyType(void)
 // only fill into this->rawbody
 bool Request::parseBody(void)
 {
-	std::multimap<std::string, std::string>::iterator iter = this->headers.find("Content-Length"); // map 으로 바꾸자
+	std::cout << "바디파싱0\n";
+
+	std::multimap<std::string, std::string>::iterator iter = this->headers.find("content-length"); // map 으로 바꾸자
 	std::size_t content_length = 0;
 	
 	if (iter != this->headers.end())
@@ -271,14 +282,20 @@ bool Request::parseBody(void)
 
 	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
 	{
+		std::cout << "ㅂㅡ디파싱1\n";
+		
 		this->raw_body += this->temp_body.substr(0, content_length);
 		temp_body.clear();
+		std::cout << "확인용333\n";
+		std::cout << this->temp_body << std::endl;
+		std::cout << "확인용444\n";
 		this->parse_status = PARSING_HEADER;
 		return (true);
 	}
 	
 	if (this->body_type == CHUNKED)
 	{
+		std::cout << "ㅂㅡ디파싱2\n";
 		std::size_t index = this->temp_body.find("\r\n");
 		std::size_t chunk_size;
 
@@ -309,6 +326,7 @@ bool Request::parseBody(void)
 			index = this->temp_body.find("\r\n");
 		}
 	}
+	std::cout << "ㅂㅡ디파싱3\n";
 	
 	return (false);
 }

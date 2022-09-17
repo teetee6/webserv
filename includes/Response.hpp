@@ -72,7 +72,7 @@ public:
 
 	//  void makeResponseCgiOrGerneral(FdType *resource_fd, int fd, Request &request, long to_read);
 	//  void makeResponseCgiOrGerneral(FdType *fd_in_FdMap, struct kevent *monitor_event);
-	 bool applyCGIResponse(std::string &raw);
+	//  bool applyCGIResponse(std::string &raw);
 	//  void makeCGIResponseHeader(Request &request);
 	 void makeResponseHeader(Request &request);
 

@@ -95,6 +95,10 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 
 		if (is_post)
 		{
+				std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!DATA!!!!!!\n";
+				std::cout << request.getRawBody() << std::endl;
+				std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
+
 			FdType *pipe_fd = new FdType(CGI_WRITE_FDTYPE, request.getConnection(), this->pid, request.getRawBody());
 			Webserver::getWebserverInst()->setFdMap(this->request_fd[1], pipe_fd);
 			Webserver::getWebserverInst()->getKq().createChangeListEvent(this->request_fd[1], "W");
@@ -125,12 +129,12 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	std::map<std::string, std::string> cgi_env;
 
 	// authorization 을 cgi_env에 Insert
-	std::multimap<std::string, std::string>::iterator iter = request.getHeaders().find("Authorization");
-	if (iter != request.getHeaders().end() && iter->second != "")
-	{
-		std::size_t found = iter->second.find(' ');
-		cgi_env.insert(std::pair<std::string, std::string>("AUTH_TYPE", iter->second.substr(0, found)));
-	}
+	std::multimap<std::string, std::string>::iterator iter;// = request.getHeaders().find("Authorization");
+	// if (iter != request.getHeaders().end() && iter->second != "")
+	// {
+	// 	std::size_t found = iter->second.find(' ');
+	// 	cgi_env.insert(std::pair<std::string, std::string>("AUTH_TYPE", iter->second.substr(0, found)));
+	// }
 
 	// content_length 을 cgi_env에 Insert
 	iter = request.getHeaders().find("Content-Length");
@@ -142,6 +146,7 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 		std::string str;
 		ss << request.getRawBody().length();
 		ss >> str;
+		std::cout << "asdjklasdjaskldjaskldjaklsjdklasdjklasd" << std::endl;
 		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", str));
 	}
 	else

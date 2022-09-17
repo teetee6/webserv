@@ -168,32 +168,3 @@ const std::string &Location::getRedirectAddr()
 {
 	return (this->redirect_addr);
 }
-
-std::string Location::autoIndexType(std::string &uri)
-{ // uri의 부분이 index or autoindex or error 체크
-
-
-	std::string temp = uri;
-	struct stat sb;
-	bool found = false;
-
-	for (std::list<std::string>::const_iterator iter = this->index.begin(); iter != this->index.end(); iter++)
-	{
-	
-	
-		temp = uri;
-		temp += *iter; // uri + index
-	
-		if (stat(temp.c_str(), &sb) == 0)
-		{
-			found = true;
-			break;
-		}
-	}
-	if (found == true)
-		return (temp); // index파일 찾음
-	else if (this->auto_index == true)
-		return ("Index of");
-	else
-		return ("404");
-}
