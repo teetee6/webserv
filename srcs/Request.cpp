@@ -244,14 +244,29 @@ void Request::parseHeaders(void)
 			value = line.substr(idx + 1);
 		this->headers.insert(std::pair<std::string, std::string>(key, value));
 		this->raw_header.erase(0, line_end + 2);
-		// std::cout << "[[[[" << key << "]]]]\n";
+
+		if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
+			this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
+
 	if (this->raw_request.length() > header_end + 4)
+	{	
 		this->raw_request = this->raw_request.substr(header_end + 4);
+		if (this->raw_request.find(this->getHeaders().count("boundary")))
+		{
+			this->raw_request = this->raw_request.substr(this->raw_request.find("\r\n") + 2);
+			std::string tmp = this->raw_request.find("Content-Type: " + 14);
+		}
+	}
 	else
 		this->raw_request.clear();
+
+	for(std::multimap<std::string, std::string>::iterator it= this->headers.begin(); it != this->headers.end(); it++)
+	{
+		std::cout << "[[[[" << it->first << ", " << it->second << "]]]]\n";
+	}
 }
 
 // python(or php)에서 upload file 받아 처리하는거 multer같은거 찾아보자
