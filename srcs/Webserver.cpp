@@ -758,7 +758,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 				{
 					if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
 						i++;
-					if(i>1)
+					if(i>=1)
 					{
 						std::cout<<"\read disconnect = "<< monitor_event->ident<<std::endl;
 						this->disconnect_connection(*connection); 
