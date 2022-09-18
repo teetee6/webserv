@@ -152,9 +152,9 @@ bool Request::parseRequest(void)
 		this->parse_status = PARSING_BODY;
 		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or CONTENT_LENGTH
 
-// for(int i =0; i<50; i++) std::cout << "d";
-// 		std::cout << std::endl;
-		// std::cout << this->body_type << std::endl;
+		// for(int i =0; i<50; i++) std::cout << "d";
+		// 		std::cout << std::endl;
+				// std::cout << this->body_type << std::endl;
 
 		if (_body_type == NOBODY)
 		{
@@ -242,11 +242,12 @@ void Request::parseHeaders(void)
 			idx++;
 		if (line_end > idx + 1)
 			value = line.substr(idx + 1);
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
 		this->headers.insert(std::pair<std::string, std::string>(key, value));
 		this->raw_header.erase(0, line_end + 2);
 
-		if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
-			this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
+		// if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
+		// 	this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
@@ -254,11 +255,8 @@ void Request::parseHeaders(void)
 	if (this->raw_request.length() > header_end + 4)
 	{	
 		this->raw_request = this->raw_request.substr(header_end + 4);
-		if (this->raw_request.find(this->getHeaders().count("boundary")))
-		{
-			this->raw_request = this->raw_request.substr(this->raw_request.find("\r\n") + 2);
-			std::string tmp = this->raw_request.find("Content-Type: " + 14);
-		}
+		// if (this->raw_request.find(this->getHeaders().count("boundary")))
+		// 	this->raw_request = this->raw_request.substr(this->raw_request.find("\r\n") + 2);
 	}
 	else
 		this->raw_request.clear();
@@ -272,32 +270,31 @@ void Request::parseHeaders(void)
 // python(or php)에서 upload file 받아 처리하는거 multer같은거 찾아보자
 bool Request::setBodyType(void)
 {
-	std::map<std::string, std::string>::iterator iter = this->headers.find("Transfer-Encoding");
+	std::map<std::string, std::string>::iterator iter;
+	iter = this->headers.find("transfer-encoding");
 	if (iter != this->headers.end() && iter->second == "chunked")
 		return (this->body_type = CHUNKED);
 
 	iter = this->headers.find("content-length");
-	if (iter != this->headers.end() && iter->second != "")
-	{
+	if (iter != this->headers.end())
 		return (this->body_type = CONTENT_LENGTH);
-	}
 	return (this->body_type); // nothing
 }
 
 // only fill into this->rawbody
 bool Request::parseBody(void)
 {
-	// std::cout << "바디파싱0\n";
-
-	std::multimap<std::string, std::string>::iterator iter = this->headers.find("content-length"); // map 으로 바꾸자
+	std::multimap<std::string, std::string>::iterator iter;
 	std::size_t content_length = 0;
 	
+	iter = this->headers.find("content-length");
 	if (iter != this->headers.end())
 		content_length = atoi(iter->second.c_str());
 
+	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
+
 	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
 	{
-		// std::cout << "ㅂㅡ디파싱1\n";
 		
 		this->raw_body += this->temp_body.substr(0, content_length);
 		temp_body.clear();
@@ -310,7 +307,6 @@ bool Request::parseBody(void)
 	
 	if (this->body_type == CHUNKED)
 	{
-		// std::cout << "ㅂㅡ디파싱2\n";
 		std::size_t index = this->temp_body.find("\r\n");
 		std::size_t chunk_size;
 
@@ -341,7 +337,6 @@ bool Request::parseBody(void)
 			index = this->temp_body.find("\r\n");
 		}
 	}
-	// std::cout << "ㅂㅡ디파싱3\n";
 	
 	return (false);
 }

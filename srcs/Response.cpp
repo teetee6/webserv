@@ -108,7 +108,7 @@ void Response::makeErrorResponse(int status, Location *location)
 		ss << this->body.length();
 		ss >> str;
 		this->generateErrorPage(status);
-		this->headers.insert(std::pair<std::string, std::string>("content-length", str));
+		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
 		this->makeResponse();
 		this->connection->setStatus(RESPONSE_COMPLETE);
 		return;
@@ -219,78 +219,20 @@ void Response::makeRawResponse(void)
 	this->raw_response += "\r\n";
 	this->raw_response += this->body;
 }
-/*
-// separate cgi_raw into status, headers(only "Content-Type"),and body
-bool Response::applyCGIResponse(std::string &cgi_raw){
-	// php-cgi 처리
-	if (cgi_raw.find("X-Powered-By:") != std::string::npos)
-	{
-		if (cgi_raw.substr(14, 3) == "PHP")
-			cgi_raw = cgi_raw.substr(cgi_raw.find("\r\n\r\n") + 4); // WTF?
-	}
-
-	// status-line
-	std::vector<std::string> status_line;
-	std::size_t status_sep = cgi_raw.find("\r\n");
-	// ft_split(cgi_raw.substr(0, status_sep), " ", status_line);
-	{
-		std::istringstream	iss(cgi_raw.substr(0, status_sep));
-		std::string			elem;
-		while (iss >> elem)
-			status_line.push_back(elem);
-	}
-	if (status_line.size() < 2)
-	{
-		this->makeErrorResponse(500, NULL);
-		return (false);
-	}
-	this->status = atoi(status_line[1].c_str());
-
-	// Header (Content-Type만 넣어주는데 매우 야매임) -done;
-	std::vector<std::string> header_line;
-	std::size_t header_sep = cgi_raw.find("\r\n\r\n");
-	// ft_split(cgi_raw.substr(status_sep + 2, header_sep - status_sep - 2), " ", header_line);
-	{
-		std::istringstream	iss(cgi_raw.substr(status_sep + 2, header_sep - status_sep - 2));
-		std::string			elem;
-		while (iss >> elem)
-			header_line.push_back(elem);
-	}
-	for (std::vector<std::string>::iterator it = header_line.begin(); it != header_line.end(); it++)
-	{
-		if((*it).compare("Content-Type:") == 0 && ++it != header_line.end())
-		{
-			if((*it).at((*it).length() - 1) == ';')
-				(*it).resize((*it).length()-1);
-		}
-	}
-	// if (*(--header_line[1].end()) == ';')
-	// 	header_line[1].erase(--header_line[1].end());
-	this->headers.insert(std::pair<std::string, std::string>("Content-Type", header_line[1]));
-
-	// Body
-	if (cgi_raw.length() > header_sep + 4)
-		this->body = cgi_raw.substr(header_sep + 4);
-	else
-		this->body = "";
-	return (true);
-}
-*/
 
 void Response::makeResponse(std::string method)
 {
 	(void)method;
 	// std::cout << "status: " <<  this->status << std::endl;
 	/* HEADER */
-	if (this->headers.find("content-length") == this->headers.end())
+	if (this->headers.find("Content-Length") == this->headers.end())
 	{
 		std::stringstream ss;
 		std::string str;
 		ss << this->body.length();
 		ss >> str;
-		this->headers.insert(std::pair<std::string, std::string>("content-length", str));
+		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
 	}
-	// std::cout << "Content Length: " << this->headers["Content-Length"] << std::endl;
 	if (this->start_line.find("HTTP") == std::string::npos)
 	{
 		std::stringstream ss;
@@ -420,6 +362,11 @@ int Response::makeResponseCgi(int curr_event_fd, Request &request)
 		while (iss >> elem)
 			status_line.push_back(elem);
 	}
+	// for(std::vector<std::string>::iterator it = status_line.begin(); it != status_line.end(); it++)
+	// {
+	// 	std::cout << "{" << *it << "} ";
+	// }
+	// std::cout << std::endl;
 	if (status_line.size() < 2)
 	{
 		this->makeErrorResponse(500, NULL);
@@ -437,15 +384,18 @@ int Response::makeResponseCgi(int curr_event_fd, Request &request)
 		while (iss >> elem)
 			header_line.push_back(elem);
 	}
-	// if (*(--header_line[1].end()) == ';')
-	// 	header_line[1].erase(--header_line[1].end());
+	// for(std::vector<std::string>::iterator it = header_line.begin(); it != header_line.end(); it++)
+	// {
+	// 	std::cout << "{" << *it << "} ";
+	// }
+	// std::cout << std::endl;
 	
 	std::vector<std::string>::iterator it;
 	for (it = header_line.begin(); it != header_line.end(); it++)
 	{
-		if((*it).compare("Content-Type:") == 0 && ++it != header_line.end())
+		if((*it).compare("content-type:") == 0 || (*it).compare("Content-Type:") == 0)
 		{
-			if((*it).at((*it).length() - 1) == ';')
+			if (++it != header_line.end() && (*it).at((*it).length() - 1) == ';')
 				(*it).resize((*it).length()-1);
 			break;
 		}
@@ -482,7 +432,7 @@ int Response::makeResponseErrorResource(int curr_event_fd)
 	{
 		std::stringstream ss;
 		ss << connection->getResponse().getBody().length();
-		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("content-length", ss.str()));
+		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("Content-Length", ss.str()));
 		connection->getResponse().makeResponse();
 
 		Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
