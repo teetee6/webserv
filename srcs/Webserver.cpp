@@ -375,11 +375,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 
 		FdType *file_fd_instance = new FdType(FILE_FDTYPE, &connection);
 		setFdMap(file_fd, file_fd_instance);
-		// std::cout << "well, good 2\n";
-		// std::cout << "changeList- " << this->getKq().getChangeList().size() << std::endl;
 		this->getKq().createChangeListEvent(file_fd, "R");
-		// std::cout << "changeList- " << this->getKq().getChangeList().size() << std::endl;
-		// std::cout << "well, good 3\n";
 	}
 	else if (connection.getRequest().getMethod() == "POST")
 	{
@@ -736,16 +732,18 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 	{
 		if (monitor_fd->getType() == SERVER_FDTYPE)
 		{
-			// std::cout << "여긴가? 1\n";
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "READ - SERVER_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			this->servers_fd[monitor_event->ident]->createConnection(monitor_event->ident);
 		}
 		else if (monitor_fd->getType() == CONNECTION_FDTYPE)
 		{
-			// std::cout << "여긴가? 2\n";
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "READ - CONNECTION_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			Connection *connection = monitor_fd->getConnection();
-			// if to improve RequestParse into multiple RequestsParse,
-			// the following should be made in vector like. only parse_status == HEADER would be appended to the vector.
-			// parse_status, (method, uri, httpVersion), headers, raw_body
+			// if to improve RequestParse into multiple RequestsParse, the following should be made in vector like. only parse_status == HEADER would be appended to the vector. [parse_status, (method, uri, httpVersion), headers, raw_body]
 			if (connection->readRequest() == DISCONNECT_CONNECTION)
 			{
 				std::map<int, FdType *>::iterator iter;
@@ -767,7 +765,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 			// std::cout << "status: " << connection->getStatus() << std::endl;
 			if (connection->getStatus() == REQUEST_COMPLETE)
 			{
-				// std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
+				std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
 				if (this->isValidRequestwithConfig(*connection) != 0)
 					return;
@@ -787,28 +785,36 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
-			// std::cout << "여긴가? 3\n";
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "READ - FILE_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseGerneral(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
-			// std::cout << "여긴가? 4\n";
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "READ - CGI_READ_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseCgi(monitor_event->ident, monitor_fd->getConnection()->getRequest())==404)
 				return;
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
-			// std::cout << "여긴가? 5\n";
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "READ - ERROR_FILE_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseErrorResource(monitor_event->ident)==404)
 				return;
 		}
 	}
 	else if (monitor_event->filter == EVFILT_WRITE)
 	{
-		// std::cout << "is this seen-WRITE ?\n";
 		if (monitor_fd->getType() == CONNECTION_FDTYPE)
 		{
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "WRITE - CONNECTION_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			Connection *connection = monitor_fd->getConnection();
 			if (connection->getStatus() == RESPONSE_COMPLETE)
 			{
@@ -821,11 +827,17 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 		// resource write - Only "PUT"
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "WRITE - FILE_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(this->makePutResponse(monitor_fd, monitor_event->ident)==404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)
 		{
+			// std::cout << "\x1b[31m""here----------------------------------------\n";
+			// std::cout << "WRITE - CGI_WRITE_FDTYPE" << std::endl;
+			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(this->writeOnPipe(monitor_fd, monitor_event->ident) ==404)
 				return;
 		}
