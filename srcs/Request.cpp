@@ -124,6 +124,11 @@ void Request::setRawRequest(char *buf)
 	this->raw_request += buf;
 }
 
+void Request::setRawRequest(std::string str)
+{
+	this->raw_request += str;
+}
+
 void Request::initRequest(void)
 { // request 멤버변수 초기화
 
@@ -152,10 +157,6 @@ bool Request::parseRequest(void)
 		this->parse_status = PARSING_BODY;
 		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or CONTENT_LENGTH
 
-		// for(int i =0; i<50; i++) std::cout << "d";
-		// 		std::cout << std::endl;
-				// std::cout << this->body_type << std::endl;
-
 		if (_body_type == NOBODY)
 		{
 			this->temp_body.clear();
@@ -164,33 +165,16 @@ bool Request::parseRequest(void)
 	}
 	if (this->parse_status == PARSING_BODY)
 	{
-		this->temp_body += raw_request;
-		raw_request.clear();
-		return (parseBody()); //요청 메시지 중 body부분 데이터를 this->raw_body에 할당
+		this->temp_body += this->raw_request;
+		this->raw_request.clear();
+		bool is_parse_end = parseBody(); //요청 메시지 중 body부분 데이터를 this->raw_body에 할당
+		// this->temp_body.clear();
+		return (is_parse_end);
 	}
 
 	return (false);
 }
 
-///////////////// private func ///////////////////////
-/*
-void Request::parseFirstLine(void)
-{ //요청메시지 첫줄 중 공백기준 쪼갠 단어를 멤버변수에 할당 + 파싱할 요청메시지에서 첫줄을 제외한 나머지 재할당
-
-	std::size_t index = this->raw_request.find("\r\n");
-	std::string start_line = this->raw_request.substr(0, index); //요청메시지 중 첫줄
-
-	//아래 3개 함수는 요청메시지 첫줄에서 공백기준 각 단어 구분해서 멤버변수에 할당.
-	this->setMethod(start_line);
-	this->setUri(start_line);
-	this->setHttpVersion(start_line);
-
-	if (this->raw_request.length() > (index + 2)) //첫번째 줄 지우고 두번째 줄부터 끝줄까지 메시지로 재할당.
-		this->raw_request = this->raw_request.substr(index + 2);
-	else
-		this->raw_request = "";
-}
-*/
 void Request::setMethod(std::string &start_line)
 {
 
@@ -246,8 +230,8 @@ void Request::parseHeaders(void)
 		this->headers.insert(std::pair<std::string, std::string>(key, value));
 		this->raw_header.erase(0, line_end + 2);
 
-		// if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
-		// 	this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
+		if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
+			this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
@@ -281,6 +265,7 @@ bool Request::setBodyType(void)
 	return (this->body_type); // nothing
 }
 
+#include <fstream>
 // only fill into this->rawbody
 bool Request::parseBody(void)
 {
@@ -293,14 +278,101 @@ bool Request::parseBody(void)
 
 	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
 
+	if (this->headers.find("boundary") != this->headers.end())
+	{
+		// std::cout << "마지막 문자: " << toascii(this->temp_body[this->temp_body.length() - 1]) << std::endl;
+		std::string boundary_end = this->headers.lower_bound("boundary")->second + "--";
+		if (this->temp_body.find(boundary_end) == std::string::npos)
+		{
+			this->raw_body += this->temp_body;
+			this->temp_body.clear();
+			return false;
+		}
+		else
+		{
+			this->raw_body += this->temp_body;
+			this->temp_body.clear();
+			this->parse_status = PARSING_HEADER;
+
+			/* */
+			std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
+			std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
+			std::cout << this->getRawBody() << std::endl;
+			std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
+
+			// std::string real_data = this->request.getRawBody().substr( this->request.getRawBody().find("\r\n\r\n") + 4);
+			// std::string boundary_end = this->request.getHeaders().lower_bound("boundary")->second + "--";
+			// // std::cout << "boundary_end: " << boundary_end << std::endl;
+			// size_t boundary_end_idx = real_data.find(boundary_end);
+			// while (real_data[--boundary_end_idx] == '-')
+			// 	boundary_end_idx--;
+			// boundary_end_idx -= 1;
+			// real_data = real_data.substr(0, boundary_end_idx);
+			// real_data.erase(boundary_end_idx);
+			// // real_data = real_data.substr(0, boundary_end_idx);
+			// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
+
+			// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
+			// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
+			// fout << real_data;
+			// fout.close();
+
+			return true;
+		}
+
+		// std::string real_data = this->temp_body.substr(this->temp_body.find("\r\n\r\n") + 4);
+		// std::string ext;
+		// std::string upload_name;
+		// if(this->temp_body.find("Content-Type") != std::string::npos)
+		// {
+		// 	// size_t start = this->temp_body.find("Content-Type");
+		// 	// // std::cout << "콘텐츠는: " << this->temp_body.substr(start) << std::endl;
+		// 	// size_t end = this->temp_body.find("\r\n", start);
+		// 	// size_t slash_idx = this->temp_body.find("/", start);
+		// 	// // std::cout << "[" << start << "[" << end << "[" << slash_idx << std::endl;
+		// 	// // std::cout << "슬래시는: " << this->temp_body.substr(slash_idx) << std::endl;
+		// 	// ext = this->temp_body.substr(slash_idx + 1, end - (slash_idx + 1));
+		// 	if(this->temp_body.find("filename") != std::string::npos)
+		// 	{
+		// 		size_t first_idx = this->temp_body.find("filename") + 10;
+		// 		upload_name = this->temp_body.substr();
+		// 		size_t last_idx = upload_name.find("\"\r\n");
+		// 		// std::cout << first_idx << ", " << last_idx << std::endl;
+		// 		upload_name = upload_name.substr(first_idx, last_idx - first_idx);
+
+		// 		std::cout << "업로드명: "<< upload_name << std::endl;
+		// 	}
+
+		// }
+
+		// std::cout << "\x1b[34m";
+		// std::cout << real_data;
+		// std::cout << "\x1b[0m" << std::endl;
+		// std::ofstream fout(upload_name, std::ios::out | std::ios::binary);
+		//// fout.write(real_data.c_str(), strlen(real_data.c_str()));
+		// fout << real_data;
+		// fout.close();
+
+		this->temp_body.clear();
+
+		// std::string boundary_end = this->headers.lower_bound("boundary")->second + "--";
+		// if (this->raw_body.find(boundary_end) != std::string::npos)
+		// {
+		// 	std::cout << "\x1b[34m" << "has boundary-end" << "\x1b[0m" << std::endl;
+		// 	std::cout << "\x1b[34m" << this->raw_body << "\x1b[0m" << std::endl;
+		// 	std::cout << "\x1b[34m" << this->raw_body.length() << "크기만큼 있군요!\x1b[0m" << std::endl;
+		// 	this->parse_status = PARSING_HEADER;
+		// 	return (true);
+		// }
+		// else
+		// 	std::cout << "\x1b[34m" << "don't have boundary-end" << "\x1b[0m" << std::endl;
+		return (false);
+	}
+
 	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
 	{
-		
 		this->raw_body += this->temp_body.substr(0, content_length);
 		temp_body.clear();
-		// std::cout << "확인용333\n";
-		// std::cout << this->temp_body << std::endl;
-		// std::cout << "확인용444\n";
 		this->parse_status = PARSING_HEADER;
 		return (true);
 	}
