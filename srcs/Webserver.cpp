@@ -693,7 +693,6 @@ bool Webserver::run()
 
 void Webserver::execMonitorEvent(struct kevent *monitor_event)
 {
-	
 	// if (this->getFdMap().find(monitor_event->ident) == this->getFdMap().end())
 	// {
 	// 	std::cout << "못찾았다\n";

@@ -70,6 +70,7 @@ public:
 	void setPath(const std::string &path);
 	void setConnection(Connection *connection);
 	void setRawRequest(char *buf);
+	void setRawRequest(std::string str);
 
 	void initRequest(void);
 
