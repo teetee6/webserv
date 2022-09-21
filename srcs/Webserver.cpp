@@ -214,7 +214,12 @@ int Webserver::isAutoIndex(Connection &connection, Location &location)
 		if (uri == "/")
 			path = location.getRoot();
 		else
-			path = location.getRoot() + uri.substr(location.getLocationName().length());
+		{
+			if (uri == location.getLocationName().substr(0, location.getLocationName().length() - 1))
+				path = location.getRoot() + uri.substr(location.getLocationName().length() - 1);
+			else
+				path = location.getRoot() + uri.substr(location.getLocationName().length());
+		}
 
 		int is_dir = this->isDirectoryName(path);
 		if (is_dir == -1)
@@ -324,10 +329,16 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	std::cout << RED"defaultToHttpMethod"RESET << std::endl;
 	std::string uri = connection.getRequest().getUri().substr(0, connection.getRequest().getUri().find('?')); //요청 uri중 ? 이전까지.
 	std::string path;
+
 	if (uri == "/")
 		path = location.getRoot();
 	else
-		path = location.getRoot() + uri.substr(location.getLocationName().length());
+	{
+		if (uri == location.getLocationName().substr(0, location.getLocationName().length() - 1))
+			path = location.getRoot() + uri.substr(location.getLocationName().length()-1);
+		else
+			path = location.getRoot() + uri.substr(location.getLocationName().length());
+	}
 
 	if (connection.getRequest().getMethod() == "GET" || connection.getRequest().getMethod() == "HEAD")
 	{
@@ -381,6 +392,12 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	}
 	else if (connection.getRequest().getMethod() == "POST")
 	{
+		if (connection.getRequest().getRawBody().length() == 0)
+		{
+			connection.getResponse().makeResponsePostPut();
+			return 0;
+		}
+
 		if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
 		{
 			connection.getResponse().makeResponsePostPut();
