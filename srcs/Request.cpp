@@ -231,7 +231,13 @@ void Request::parseHeaders(void)
 		this->raw_header.erase(0, line_end + 2);
 
 		if (line.find("multipart/form-data;") != std::string::npos && line.find("boundary=") != std::string::npos)
-			this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(line.find_last_of("boundary=") + 9)));
+		{
+			size_t boundary_idx = line.find("boundary=");
+			this->headers.insert(std::pair<std::string, std::string>("boundary", line.substr(boundary_idx + 9)));
+			std::string multipart_type_str = this->headers.lower_bound("content-type")->second;
+			multipart_type_str = multipart_type_str.substr(0, multipart_type_str.find(";"));
+			this->headers.lower_bound("content-type")->second = multipart_type_str;
+		}
 	}
 
 	size_t header_end = this->raw_request.find("\r\n\r\n");
@@ -278,95 +284,154 @@ bool Request::parseBody(void)
 
 	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
 
-	if (this->headers.find("boundary") != this->headers.end())
+	// if (this->headers.find("boundary") != this->headers.end())
+	if (this->headers.lower_bound("content-type")->second == "multipart/form-data")
 	{
-		// std::cout << "마지막 문자: " << toascii(this->temp_body[this->temp_body.length() - 1]) << std::endl;
-		std::string boundary_end = this->headers.lower_bound("boundary")->second + "--";
+		std::string boundary = this->headers.lower_bound("boundary")->second;
+		std::string boundary_end = boundary + "--";
 		if (this->temp_body.find(boundary_end) == std::string::npos)
 		{
 			this->raw_body += this->temp_body;
 			this->temp_body.clear();
 			return false;
 		}
-		else
+		
+		this->raw_body += this->temp_body;
+		this->temp_body.clear();
+		this->parse_status = PARSING_HEADER;
+
+		std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
+		std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
+		std::cout << this->getRawBody() << std::endl;
+		std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
+
+// {
+// 	"data" :
+// 	[
+// 		{
+// 			"name": "imgFile",
+// 			"filename": "hyoslee.jpeg",
+// 			"content_type": "image/jpeg",
+// 			"file_location": "./upload/hyoslee.jpeg"
+// 		},
+// 		{
+// 			"name": "justFile",
+// 			"filename": "a.out",
+// 			"content_type": "application/octet-stream",
+// 			"file_location": "./upload/a.out"
+// 		},
+// 		{
+// 			"name": "thisIsKey",
+// 			"value": "hahaha"
+// 		}
+// 	]
+// }
+
+
+		std::string raw = this->getRawBody();
+		std::string json = "{\"data\" :[";
+		// int i = 0;
+		size_t interval_idx = raw.find(boundary);
+		raw.erase(0, interval_idx + boundary.length() + 2);
+		while(1)
 		{
-			this->raw_body += this->temp_body;
-			this->temp_body.clear();
-			this->parse_status = PARSING_HEADER;
+			interval_idx = raw.find(boundary);
+			if (interval_idx == std::string::npos)
+			{
+				if (json[json.length() - 1] == ',')
+					json.resize(json.length() - 1);
+				json += std::string("]}");
+				break;
+			}
 
-			/* */
-			std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
-			std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
-			std::cout << this->getRawBody() << std::endl;
-			std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
+			// json += std::string("elem");
+			// json += (i++);
 
-			// std::string real_data = this->request.getRawBody().substr( this->request.getRawBody().find("\r\n\r\n") + 4);
-			// std::string boundary_end = this->request.getHeaders().lower_bound("boundary")->second + "--";
-			// // std::cout << "boundary_end: " << boundary_end << std::endl;
-			// size_t boundary_end_idx = real_data.find(boundary_end);
-			// while (real_data[--boundary_end_idx] == '-')
-			// 	boundary_end_idx--;
-			// boundary_end_idx -= 1;
-			// real_data = real_data.substr(0, boundary_end_idx);
-			// real_data.erase(boundary_end_idx);
-			// // real_data = real_data.substr(0, boundary_end_idx);
-			// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
+			json += std::string("{");
+			size_t header_end = raw.find("\r\n\r\n");
+			size_t data_start = header_end + 4;
+			size_t data_end = interval_idx;
+			while (raw[data_end] == '-')
+				--data_end;
+			--data_end;
+			std::string raw_head = raw.substr(0, header_end);
+			std::string raw_data = raw.substr(data_start, data_end - data_start);
 
-			// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
-			// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
-			// fout << real_data;
-			// fout.close();
+			size_t name_s = raw_head.find("name=\"");
+			std::string name;
+			if (name_s != std::string::npos)
+			{
+				name_s += 6;
+				size_t name_e = raw_head.find("\"", name_s + 1);
+				name = raw_head.substr(name_s, name_e - name_s);
+				json += std::string("\"name\": ") + std::string("\"") + name + std::string("\"");
+				json += std::string(",");
+			}
 
-			return true;
+			size_t filename_s = raw_head.find("filename=\"");
+			std::string filename;
+			if (filename_s != std::string::npos)
+			{
+				filename_s += 10;
+				size_t filename_e = raw_head.find("\"", filename_s + 1);
+				filename = raw_head.substr(filename_s, filename_e - filename_s);
+				json += std::string("\"filename\": ") + std::string("\"") + filename + std::string("\"");
+				json += std::string(",");
+			}
+
+			size_t content_type_s = raw_head.find("Content-Type: ");
+			if (content_type_s == std::string::npos)
+				content_type_s = raw_head.find("content-type: ");
+			std::string content_type;
+			if (content_type_s != std::string::npos)
+			{
+				content_type_s += 14;
+				size_t content_type_e = raw_head.find_first_of(";\r\n", content_type_s);
+				content_type = raw_head.substr(content_type_s, content_type_e - content_type_s);
+				json += std::string("\"content_type\": ");
+				json += std::string("\"") + content_type + std::string("\"");
+				json += std::string(",");
+			}
+
+			if(filename.length())
+			{
+				std::ofstream fout("tmp__" + filename, std::ios::out | std::ios::binary);
+				fout << raw_data;
+				fout.close();
+				json += std::string("\"file_location\": ");
+				json += std::string("\"") + (std::string("tmp__") + filename) + std::string("\"");
+				json += std::string(",");
+			}
+			else
+			{
+				json += std::string("\"value\": ") + std::string("\"") + raw_data + std::string("\"");
+				json += std::string(",");
+			}
+			if (json[json.length() - 1] == ',')
+				json.resize(json.length() - 1);
+			json += std::string("},");
+			raw.erase(0, interval_idx + boundary.length() + 2);
 		}
+		std::cout << json << std::endl;
 
-		// std::string real_data = this->temp_body.substr(this->temp_body.find("\r\n\r\n") + 4);
-		// std::string ext;
-		// std::string upload_name;
-		// if(this->temp_body.find("Content-Type") != std::string::npos)
-		// {
-		// 	// size_t start = this->temp_body.find("Content-Type");
-		// 	// // std::cout << "콘텐츠는: " << this->temp_body.substr(start) << std::endl;
-		// 	// size_t end = this->temp_body.find("\r\n", start);
-		// 	// size_t slash_idx = this->temp_body.find("/", start);
-		// 	// // std::cout << "[" << start << "[" << end << "[" << slash_idx << std::endl;
-		// 	// // std::cout << "슬래시는: " << this->temp_body.substr(slash_idx) << std::endl;
-		// 	// ext = this->temp_body.substr(slash_idx + 1, end - (slash_idx + 1));
-		// 	if(this->temp_body.find("filename") != std::string::npos)
-		// 	{
-		// 		size_t first_idx = this->temp_body.find("filename") + 10;
-		// 		upload_name = this->temp_body.substr();
-		// 		size_t last_idx = upload_name.find("\"\r\n");
-		// 		// std::cout << first_idx << ", " << last_idx << std::endl;
-		// 		upload_name = upload_name.substr(first_idx, last_idx - first_idx);
+		/* rawBody에 여러 form 요소들을 처리하자 */
+		// std::string real_data = this->getRawBody().substr( this->getRawBody().find("\r\n\r\n") + 4);
+		// // std::cout << "boundary_end: " << boundary_end << std::endl;
+		// size_t boundary_end_idx = real_data.find(boundary_end);
+		// while (real_data[--boundary_end_idx] == '-')
+		// 	boundary_end_idx--;
+		// boundary_end_idx -= 1;
+		// real_data = real_data.substr(0, boundary_end_idx);
+		// real_data.erase(boundary_end_idx);
+		// // real_data = real_data.substr(0, boundary_end_idx);
+		// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
 
-		// 		std::cout << "업로드명: "<< upload_name << std::endl;
-		// 	}
-
-		// }
-
-		// std::cout << "\x1b[34m";
-		// std::cout << real_data;
-		// std::cout << "\x1b[0m" << std::endl;
-		// std::ofstream fout(upload_name, std::ios::out | std::ios::binary);
-		//// fout.write(real_data.c_str(), strlen(real_data.c_str()));
+		// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
+		// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
 		// fout << real_data;
 		// fout.close();
 
-		this->temp_body.clear();
-
-		// std::string boundary_end = this->headers.lower_bound("boundary")->second + "--";
-		// if (this->raw_body.find(boundary_end) != std::string::npos)
-		// {
-		// 	std::cout << "\x1b[34m" << "has boundary-end" << "\x1b[0m" << std::endl;
-		// 	std::cout << "\x1b[34m" << this->raw_body << "\x1b[0m" << std::endl;
-		// 	std::cout << "\x1b[34m" << this->raw_body.length() << "크기만큼 있군요!\x1b[0m" << std::endl;
-		// 	this->parse_status = PARSING_HEADER;
-		// 	return (true);
-		// }
-		// else
-		// 	std::cout << "\x1b[34m" << "don't have boundary-end" << "\x1b[0m" << std::endl;
-		return (false);
+		return (true);
 	}
 
 	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
