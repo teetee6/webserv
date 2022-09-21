@@ -202,6 +202,9 @@ bool Webserver::isCgi(Location &location, Request &request)
 int Webserver::isAutoIndex(Connection &connection, Location &location)
 {
 	std::cout << "isAutoIndex" << std::endl;
+	if(location.getAutoIndex() != true)
+		return 0;
+
 	if (connection.getRequest().getMethod() == "GET")
 	{
 		std::string uri = connection.getRequest().getUri().substr(0, connection.getRequest().getUri().find('?')); //요청 uri중 ? 이전까지.
@@ -211,8 +214,12 @@ int Webserver::isAutoIndex(Connection &connection, Location &location)
 		if (uri == "/")
 			path = location.getRoot();
 		else
-			path = location.getRoot() + uri.substr(location.getLocationName().length());
-		// std::cout << path << std::endl;
+		{
+			if (uri == location.getLocationName().substr(0, location.getLocationName().length() - 1))
+				path = location.getRoot() + uri.substr(location.getLocationName().length() - 1);
+			else
+				path = location.getRoot() + uri.substr(location.getLocationName().length());
+		}
 
 		int is_dir = this->isDirectoryName(path);
 		if (is_dir == -1)
@@ -322,10 +329,16 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	std::cout << RED"defaultToHttpMethod"RESET << std::endl;
 	std::string uri = connection.getRequest().getUri().substr(0, connection.getRequest().getUri().find('?')); //요청 uri중 ? 이전까지.
 	std::string path;
+
 	if (uri == "/")
 		path = location.getRoot();
 	else
-		path = location.getRoot() + uri.substr(location.getLocationName().length());
+	{
+		if (uri == location.getLocationName().substr(0, location.getLocationName().length() - 1))
+			path = location.getRoot() + uri.substr(location.getLocationName().length()-1);
+		else
+			path = location.getRoot() + uri.substr(location.getLocationName().length());
+	}
 
 	if (connection.getRequest().getMethod() == "GET" || connection.getRequest().getMethod() == "HEAD")
 	{
@@ -379,8 +392,60 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	}
 	else if (connection.getRequest().getMethod() == "POST")
 	{
-		{/**/}
-		// if the file exists, return errorResponse;
+		if (connection.getRequest().getRawBody().length() == 0)
+		{
+			connection.getResponse().makeResponsePostPut();
+			return 0;
+		}
+
+		if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
+		{
+			connection.getResponse().makeResponsePostPut();
+			return 0;
+		}
+
+		struct stat sb;
+		stat(path.c_str(), &sb);
+
+		if (S_ISDIR(sb.st_mode))
+		{
+			connection.getResponse().makeErrorResponse(400, &location);
+			return (400);
+		}
+
+		// from now one, path is file type.
+		connection.getRequest().setPath(path);
+
+
+		std::string folder_path = path.substr(0, path.find_last_of("/")+1);
+		std::string filename_path = path.substr(path.find_last_of("/") + 1);
+		
+		DIR *dir_ptr;
+		struct dirent *file;
+		if ((dir_ptr = opendir(folder_path.c_str())) != NULL)
+		{
+			while((file = readdir(dir_ptr))!=NULL)
+			{
+				std::string filename = std::string(file->d_name);
+
+				if (filename == filename_path)
+				{
+					connection.getResponse().makeErrorResponse(400, &location);
+					return (400);
+				}
+			}
+		}
+
+
+		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
+		if (put_fd == -1)
+		{
+			connection.getResponse().makeErrorResponse(500, &location);
+			return (500);
+		}
+		FdType *file_fd_inst = new FdType(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
+		setFdMap(put_fd, file_fd_inst);
+		Webserver::getWebserverInst()->getKq().createChangeListEvent(put_fd, "W");
 	}
 	else if (connection.getRequest().getMethod() == "PUT")
 	{ // PUT 요청일때
@@ -584,6 +649,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 {
 	// std::cout << "write to [" << monitor_event_fd << "]\n";
 	size_t res_idx = connection.getResponse().getResIdx();
+
 	int write_size = write(monitor_event_fd, connection.getResponse().getRawResponse().c_str() + res_idx, connection.getResponse().getRawResponse().length() - res_idx);
 	if (write_size == -1)
 	{
@@ -622,7 +688,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 	return 0;
 }
 
-int Webserver::makePutResponse(FdType *monitor_fd, int monitor_event_fd)
+int Webserver::makePostPutResponse(FdType *monitor_fd, int monitor_event_fd)
 {
 	size_t write_idx = monitor_fd->getWriteIdx();
 	int write_size = write(monitor_event_fd, monitor_fd->getData().c_str() + write_idx, monitor_fd->getData().length() - write_idx);
@@ -634,7 +700,7 @@ int Webserver::makePutResponse(FdType *monitor_fd, int monitor_event_fd)
 	monitor_fd->setWriteIdx(write_idx + write_size);
 	if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
 	{
-		monitor_fd->getConnection()->getResponse().makeResponsePut(monitor_fd->getConnection()->getRequest());
+		monitor_fd->getConnection()->getResponse().makeResponsePostPut();
 		this->clrFDonTable(monitor_event_fd);
 	}
 	return 0;
@@ -829,7 +895,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 			// std::cout << "\x1b[31m""here----------------------------------------\n";
 			// std::cout << "WRITE - FILE_FDTYPE" << std::endl;
 			// std::cout << "----------------------------------------here\n""\x1b[0m";
-			if(this->makePutResponse(monitor_fd, monitor_event->ident)==404)
+			if (this->makePostPutResponse(monitor_fd, monitor_event->ident) == 404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)

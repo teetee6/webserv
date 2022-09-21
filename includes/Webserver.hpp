@@ -99,7 +99,7 @@ public:
 
 	void disconnect_connection(Connection &connection);
 	int sendResponse(Connection &connection, int monitor_event_fd);
-	int makePutResponse(FdType *monitor_fd, int monitor_event_fd);
+	int makePostPutResponse(FdType *monitor_fd, int monitor_event_fd);
 	int writeOnPipe(FdType *monitor_fd, int monitor_event_fd);
 };
 

@@ -327,7 +327,6 @@ bool Request::parseBody(void)
 // 	]
 // }
 
-
 		std::string raw = this->getRawBody();
 		std::string json = "{\"data\" :[";
 		// int i = 0;
@@ -413,23 +412,25 @@ bool Request::parseBody(void)
 			raw.erase(0, interval_idx + boundary.length() + 2);
 		}
 		std::cout << json << std::endl;
+		this->raw_body = json;
+		{
+			/* rawBody에 여러 form 요소들을 처리하자 */
+			// std::string real_data = this->getRawBody().substr( this->getRawBody().find("\r\n\r\n") + 4);
+			// // std::cout << "boundary_end: " << boundary_end << std::endl;
+			// size_t boundary_end_idx = real_data.find(boundary_end);
+			// while (real_data[--boundary_end_idx] == '-')
+			// 	boundary_end_idx--;
+			// boundary_end_idx -= 1;
+			// real_data = real_data.substr(0, boundary_end_idx);
+			// real_data.erase(boundary_end_idx);
+			// // real_data = real_data.substr(0, boundary_end_idx);
+			// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
 
-		/* rawBody에 여러 form 요소들을 처리하자 */
-		// std::string real_data = this->getRawBody().substr( this->getRawBody().find("\r\n\r\n") + 4);
-		// // std::cout << "boundary_end: " << boundary_end << std::endl;
-		// size_t boundary_end_idx = real_data.find(boundary_end);
-		// while (real_data[--boundary_end_idx] == '-')
-		// 	boundary_end_idx--;
-		// boundary_end_idx -= 1;
-		// real_data = real_data.substr(0, boundary_end_idx);
-		// real_data.erase(boundary_end_idx);
-		// // real_data = real_data.substr(0, boundary_end_idx);
-		// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
-
-		// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
-		// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
-		// fout << real_data;
-		// fout.close();
+			// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
+			// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
+			// fout << real_data;
+			// fout.close();
+		}
 
 		return (true);
 	}
