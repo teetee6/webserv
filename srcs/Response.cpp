@@ -97,18 +97,18 @@ void Response::makeRedirectResponse(Location &location)
 // parse into this->headers and this->body, and then merge into this->raw_response
 void Response::makeErrorResponse(int status, Location *location)
 {
+
 	this->status = status;
 
 	// default ErrorPage
 	if (location == NULL || location->getErrorPages().count(status) == 0)
 	{
-		// std::cout << "NO" << status << "\n"; 
+		// std::cout << "1 NO" << status << "\n"; 
 		std::stringstream ss;
 		std::string str;
 		ss << this->body.length();
 		ss >> str;
 		this->generateErrorPage(status);
-		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
 		this->makeResponse();
 		this->connection->setStatus(RESPONSE_COMPLETE);
 		return;
@@ -269,20 +269,29 @@ void Response::makeResponse(std::string method)
 		this->raw_response += "\r\n";
 	}
 	// std::cout << "[header to raw_response:]\n" <<  this->raw_response << std::endl;
+
 	this->raw_response += "\r\n";
 	this->raw_response += this->body;
 	// std::cout << "[the last raw_response:]\n" <<  this->raw_response << std::endl;
 
 	/* BODY */
 }
-
-void Response::makeResponsePut(Request &request)
+void Response::makeResponsePostPut()
 {
-	(void)request;
 	this->status = 201;
+	this->body = this->connection->getRequest().getRawBody();
 	this->makeResponse();
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
+
+// void Response::makeResponsePostPut(Request &request)
+// {
+// 	(void)request;
+// 	this->status = 201;
+// 	this->body = this->connection->getRequest().getRawBody();
+// 	this->makeResponse();
+// 	this->connection->setStatus(RESPONSE_COMPLETE);
+// }
 
 void Response::makeDeleteResponse(Request &request)
 { // delete 응답메시지 생성

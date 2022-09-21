@@ -87,12 +87,13 @@ public:
 	void makeDeleteResponse(Request &request);
 	int makeResponseGerneral(int curr_event_fd, Request &request, long content_length);
 	int makeResponseErrorResource(int curr_event_fd);
-	void makeResponsePut(Request &request);
+	// void makeResponsePostPut(Request &request);
+	void makeResponsePostPut();
 
-	 std::map<std::string, std::string> &getStatusCode();
-	 std::map<std::string, std::string> &getMimeType();
-	 void initStatusCode(void);
-	 void initMimeType(void);
+	std::map<std::string, std::string> &getStatusCode();
+	std::map<std::string, std::string> &getMimeType();
+	void initStatusCode(void);
+	void initMimeType(void);
 };
 
 #endif
