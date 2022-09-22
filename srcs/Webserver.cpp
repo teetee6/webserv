@@ -677,11 +677,11 @@ void Webserver::disconnect_connection(Connection &connection)
 	clrFDonTable(connection_fd);
 	// std::cout << "error9 " << std::endl;
 }
-
 int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 {
 	// std::cout << "write to [" << monitor_event_fd << "]\n";
 	size_t res_idx = connection.getResponse().getResIdx();
+	std::string uri = connection.getRequest().getUri();
 
 	int write_size = write(monitor_event_fd, connection.getResponse().getRawResponse().c_str() + res_idx, connection.getResponse().getRawResponse().length() - res_idx);
 	if (write_size == -1)
@@ -699,27 +699,74 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 		connection.setStatus(REQUEST_RECEIVING);
 	}
 
-	if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end() )
+	if (uri == "/siege.html")
 	{
-		std::map<int, FdType *>::iterator iter;
-		int i = 0;
-		for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
+		std::cout << "aaaaa" << std::endl;
+		if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end())
 		{
-			if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
-				i++;
-			if(i>1)
+			std::map<int, FdType *>::iterator iter;
+			int i = 0;
+			for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
 			{
-				std::cout<<"\nwrite disconnect = "<< monitor_event_fd<<std::endl;
-				this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
-				std::cout<<"==================\n"<<std::endl;
-				break;
-
+				if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
+					i++;
+				if (i > 1)
+				{
+					std::cout << "\nwrite disconnect = " << monitor_event_fd << std::endl;
+					this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
+					std::cout << "==================\n"
+										<< std::endl;
+					break;
+				}
 			}
 		}
 	}
 
 	return 0;
 }
+
+// int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
+// {
+// 	// std::cout << "write to [" << monitor_event_fd << "]\n";
+// 	size_t res_idx = connection.getResponse().getResIdx();
+
+// 	int write_size = write(monitor_event_fd, connection.getResponse().getRawResponse().c_str() + res_idx, connection.getResponse().getRawResponse().length() - res_idx);
+// 	if (write_size == -1)
+// 	{
+// 		this->disconnect_connection(connection);
+// 		std::cout << "With write error, disconnected: " << monitor_event_fd << std::endl;
+// 		return 404;
+// 	}
+// 	connection.getResponse().setResIdx(res_idx + write_size);
+// 	if (connection.getResponse().getResIdx() >= connection.getResponse().getRawResponse().length())
+// 	{
+// 		std::cout << "byebye~\n";
+// 		connection.getRequest().initRequest();
+// 		connection.getResponse().initResponse();
+// 		connection.setStatus(REQUEST_RECEIVING);
+// 	}
+
+// 	if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end() )
+// 	{
+// 		std::map<int, FdType *>::iterator iter;
+// 		int i = 0;
+// 		for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
+// 		{
+// 			if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
+// 				i++;
+// 			if(i>1)
+// 			{
+// 				std::cout<<"\nwrite disconnect = "<< monitor_event_fd<<std::endl;
+// 				this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
+// 				std::cout<<"==================\n"<<std::endl;
+// 				break;
+
+// 			}
+// 		}
+// 	}
+
+// 	return 0;
+// }
 
 int Webserver::makePostPutResponse(FdType *monitor_fd, int monitor_event_fd)
 {
