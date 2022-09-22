@@ -392,6 +392,39 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	}
 	else if (connection.getRequest().getMethod() == "POST")
 	{
+		if(path == location.getRoot())
+		{
+			std::string res = this->isValidIndexFile(path, location); // index or autoindex(파일열림체크) or error 체크
+			if (res == "404")
+			{
+				connection.getResponse().makeErrorResponse(404, &location);
+				return (404);
+			}
+			struct stat sb;
+			stat(res.c_str(), &sb);
+			if (S_ISDIR(sb.st_mode))
+			{
+				connection.getResponse().makeErrorResponse(500, &location);
+				return (500);
+			}
+			else
+				path = res;
+
+			connection.getRequest().setPath(path);
+
+			int file_fd = open(path.c_str(), O_RDONLY);
+			if (file_fd == -1)
+			{
+				connection.getResponse().makeErrorResponse(500, &location);
+				return (500);
+			}
+
+			FdType *file_fd_instance = new FdType(FILE_FDTYPE, &connection);
+			setFdMap(file_fd, file_fd_instance);
+			this->getKq().createChangeListEvent(file_fd, "R");
+			return 0;
+		}
+
 		if (connection.getRequest().getRawBody().length() == 0)
 		{
 			connection.getResponse().makeResponsePostPut();
