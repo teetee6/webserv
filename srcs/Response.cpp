@@ -49,6 +49,11 @@ void Response::setResIdx(size_t res_idx)
 	this->res_idx = res_idx;
 }
 
+void Response::setBody(std::string body)
+{
+	this->body = body;
+}
+
 void Response::initResponse(void)
 {
 	this->start_line.clear();
@@ -279,6 +284,17 @@ void Response::makeResponse(std::string method)
 void Response::makeResponsePostPut()
 {
 	this->status = 201;
+	this->body = this->connection->getRequest().getRawBody();
+	this->makeResponse();
+	this->connection->setStatus(RESPONSE_COMPLETE);
+}
+
+void Response::makeResponseMultipart(std::string uploaded)
+{
+	if (uploaded == "UPLOADED")
+		this->status = 201;
+	else
+		this->status = 200;
 	this->body = this->connection->getRequest().getRawBody();
 	this->makeResponse();
 	this->connection->setStatus(RESPONSE_COMPLETE);

@@ -1,5 +1,6 @@
 #include "Request.hpp"
 #include "Connection.hpp"
+#include "Webserver.hpp"
 
 Request::Request(void)
 {
@@ -90,6 +91,11 @@ const std::string &Request::getRawBody(void) const
 	return (this->raw_body);
 }
 
+int Request::getBodyType(void)
+{
+	return (this->body_type);
+}
+
 const std::string &Request::getTempBody(void) const
 {
 	return (this->temp_body);
@@ -144,9 +150,6 @@ void Request::initRequest(void)
 	this->path.clear();
 }
 
-// for(int i =0; i<50; i++) std::cout << "d";
-// 		std::cout << std::endl;
-
 bool Request::parseRequest(void)
 {
 	std::size_t index = this->raw_request.find("\r\n\r\n"); // the location of the boundary between HEADER and BODY
@@ -155,8 +158,7 @@ bool Request::parseRequest(void)
 	{
 		this->parseHeaders();
 		this->parse_status = PARSING_BODY;
-		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or CONTENT_LENGTH
-
+		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or MULTIPART or CONTENT_LENGTH
 		if (_body_type == NOBODY)
 		{
 			this->temp_body.clear();
@@ -168,7 +170,6 @@ bool Request::parseRequest(void)
 		this->temp_body += this->raw_request;
 		this->raw_request.clear();
 		bool is_parse_end = parseBody(); //요청 메시지 중 body부분 데이터를 this->raw_body에 할당
-		// this->temp_body.clear();
 		return (is_parse_end);
 	}
 
@@ -243,11 +244,7 @@ void Request::parseHeaders(void)
 	size_t header_end = this->raw_request.find("\r\n\r\n");
 
 	if (this->raw_request.length() > header_end + 4)
-	{	
 		this->raw_request = this->raw_request.substr(header_end + 4);
-		// if (this->raw_request.find(this->getHeaders().count("boundary")))
-		// 	this->raw_request = this->raw_request.substr(this->raw_request.find("\r\n") + 2);
-	}
 	else
 		this->raw_request.clear();
 
@@ -261,49 +258,20 @@ void Request::parseHeaders(void)
 bool Request::setBodyType(void)
 {
 	std::map<std::string, std::string>::iterator iter;
+	iter = this->headers.find("content-type");
+	if (iter != this->headers.end() && iter->second == "multipart/form-data")
+		return (this->body_type = MULTIPART);
+
 	iter = this->headers.find("transfer-encoding");
 	if (iter != this->headers.end() && iter->second == "chunked")
 		return (this->body_type = CHUNKED);
+
 
 	iter = this->headers.find("content-length");
 	if (iter != this->headers.end())
 		return (this->body_type = CONTENT_LENGTH);
 	return (this->body_type); // nothing
 }
-
-#include <fstream>
-// only fill into this->rawbody
-bool Request::parseBody(void)
-{
-	std::multimap<std::string, std::string>::iterator iter;
-	std::size_t content_length = 0;
-	
-	iter = this->headers.find("content-length");
-	if (iter != this->headers.end())
-		content_length = atoi(iter->second.c_str());
-
-	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
-
-	// if (this->headers.find("boundary") != this->headers.end())
-	if (this->headers.lower_bound("content-type")->second == "multipart/form-data")
-	{
-		std::string boundary = this->headers.lower_bound("boundary")->second;
-		std::string boundary_end = boundary + "--";
-		if (this->temp_body.find(boundary_end) == std::string::npos)
-		{
-			this->raw_body += this->temp_body;
-			this->temp_body.clear();
-			return false;
-		}
-		
-		this->raw_body += this->temp_body;
-		this->temp_body.clear();
-		this->parse_status = PARSING_HEADER;
-
-		std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
-		std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
-		std::cout << this->getRawBody() << std::endl;
-		std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
 
 // {
 // 	"data" :
@@ -327,122 +295,140 @@ bool Request::parseBody(void)
 // 	]
 // }
 
-		std::string raw = this->getRawBody();
-		std::string json = "{\"data\" :[";
-		// int i = 0;
-		size_t interval_idx = raw.find(boundary);
-		raw.erase(0, interval_idx + boundary.length() + 2);
-		while(1)
+void Request::parseMultipart(void)
+{
+	std::string boundary = this->headers.lower_bound("boundary")->second;
+	std::string boundary_end = boundary + "--";
+	std::vector<std::pair<std::string, std::string> > upload_file_list;
+		
+	std::string raw = this->getRawBody();
+	std::string json = "{\"data\" :[";
+	size_t interval_idx = raw.find(boundary);
+	raw.erase(0, interval_idx + boundary.length() + 2);
+	while(1)
+	{
+		interval_idx = raw.find(boundary);
+		if (interval_idx == std::string::npos)
 		{
-			interval_idx = raw.find(boundary);
-			if (interval_idx == std::string::npos)
-			{
-				if (json[json.length() - 1] == ',')
-					json.resize(json.length() - 1);
-				json += std::string("]}");
-				break;
-			}
-
-			// json += std::string("elem");
-			// json += (i++);
-
-			json += std::string("{");
-			size_t header_end = raw.find("\r\n\r\n");
-			size_t data_start = header_end + 4;
-			size_t data_end = interval_idx;
-			while (raw[data_end] == '-')
-				--data_end;
-			--data_end;
-			std::string raw_head = raw.substr(0, header_end);
-			std::string raw_data = raw.substr(data_start, data_end - data_start);
-
-			size_t name_s = raw_head.find("name=\"");
-			std::string name;
-			if (name_s != std::string::npos)
-			{
-				name_s += 6;
-				size_t name_e = raw_head.find("\"", name_s + 1);
-				name = raw_head.substr(name_s, name_e - name_s);
-				json += std::string("\"name\": ") + std::string("\"") + name + std::string("\"");
-				json += std::string(",");
-			}
-
-			size_t filename_s = raw_head.find("filename=\"");
-			std::string filename;
-			if (filename_s != std::string::npos)
-			{
-				filename_s += 10;
-				size_t filename_e = raw_head.find("\"", filename_s + 1);
-				filename = raw_head.substr(filename_s, filename_e - filename_s);
-				json += std::string("\"filename\": ") + std::string("\"") + filename + std::string("\"");
-				json += std::string(",");
-			}
-
-			size_t content_type_s = raw_head.find("Content-Type: ");
-			if (content_type_s == std::string::npos)
-				content_type_s = raw_head.find("content-type: ");
-			std::string content_type;
-			if (content_type_s != std::string::npos)
-			{
-				content_type_s += 14;
-				size_t content_type_e = raw_head.find_first_of(";\r\n", content_type_s);
-				content_type = raw_head.substr(content_type_s, content_type_e - content_type_s);
-				json += std::string("\"content_type\": ");
-				json += std::string("\"") + content_type + std::string("\"");
-				json += std::string(",");
-			}
-
-			if(filename.length())
-			{
-				std::ofstream fout("tmp__" + filename, std::ios::out | std::ios::binary);
-				fout << raw_data;
-				fout.close();
-				json += std::string("\"file_location\": ");
-				json += std::string("\"") + (std::string("tmp__") + filename) + std::string("\"");
-				json += std::string(",");
-			}
-			else
-			{
-				json += std::string("\"value\": ") + std::string("\"") + raw_data + std::string("\"");
-				json += std::string(",");
-			}
 			if (json[json.length() - 1] == ',')
 				json.resize(json.length() - 1);
-			json += std::string("},");
-			raw.erase(0, interval_idx + boundary.length() + 2);
+			json += std::string("]}");
+			break;
 		}
-		std::cout << json << std::endl;
-		this->raw_body = json;
+
+		json += std::string("{");
+		size_t header_end = raw.find("\r\n\r\n");
+		size_t data_start = header_end + 4;
+		size_t data_end = interval_idx;
+		while (raw[data_end] == '-')
+			--data_end;
+		--data_end;
+		std::string raw_head = raw.substr(0, header_end);
+		std::string raw_data = raw.substr(data_start, data_end - data_start);
+
+		size_t name_s = raw_head.find("name=\"");
+		std::string name;
+		if (name_s != std::string::npos)
 		{
-			/* rawBody에 여러 form 요소들을 처리하자 */
-			// std::string real_data = this->getRawBody().substr( this->getRawBody().find("\r\n\r\n") + 4);
-			// // std::cout << "boundary_end: " << boundary_end << std::endl;
-			// size_t boundary_end_idx = real_data.find(boundary_end);
-			// while (real_data[--boundary_end_idx] == '-')
-			// 	boundary_end_idx--;
-			// boundary_end_idx -= 1;
-			// real_data = real_data.substr(0, boundary_end_idx);
-			// real_data.erase(boundary_end_idx);
-			// // real_data = real_data.substr(0, boundary_end_idx);
-			// std::cout << "\x1b[34m" << "--파일에 써 넣을 최종 데이터--\n" << real_data << "\x1b[0m" << std::endl;
-
-			// std::ofstream fout("this_is_binary_file.jpeg", std::ios::out | std::ios::binary);
-			// // fout.write(real_data.c_str(), strlen(real_data.c_str()));
-			// fout << real_data;
-			// fout.close();
+			name_s += 6;
+			size_t name_e = raw_head.find("\"", name_s + 1);
+			name = raw_head.substr(name_s, name_e - name_s);
+			json += std::string("\"name\": ") + std::string("\"") + name + std::string("\"");
+			json += std::string(",");
 		}
 
-		return (true);
+		size_t filename_s = raw_head.find("filename=\"");
+		std::string filename;
+		if (filename_s != std::string::npos)
+		{
+			filename_s += 10;
+			size_t filename_e = raw_head.find("\"", filename_s + 1);
+			filename = raw_head.substr(filename_s, filename_e - filename_s);
+			json += std::string("\"filename\": ") + std::string("\"") + filename + std::string("\"");
+			json += std::string(",");
+		}
+
+		size_t content_type_s = raw_head.find("Content-Type: ");
+		if (content_type_s == std::string::npos)
+			content_type_s = raw_head.find("content-type: ");
+		std::string content_type;
+		if (content_type_s != std::string::npos)
+		{
+			content_type_s += 14;
+			size_t content_type_e = raw_head.find_first_of(";\r\n", content_type_s);
+			content_type = raw_head.substr(content_type_s, content_type_e - content_type_s);
+			json += std::string("\"content_type\": ");
+			json += std::string("\"") + content_type + std::string("\"");
+			json += std::string(",");
+		}
+
+		if(filename.length())
+		{
+			upload_file_list.push_back(std::pair<std::string, std::string>(filename ,raw_data));
+
+			json += std::string("\"file_location\": ");
+			json += std::string("\"") + (std::string("tmp__") + filename) + std::string("\"");
+			json += std::string(",");
+		}
+		else
+		{
+			json += std::string("\"value\": ") + std::string("\"") + raw_data + std::string("\"");
+			json += std::string(",");
+		}
+		if (json[json.length() - 1] == ',')
+			json.resize(json.length() - 1);
+		json += std::string("},");
+		raw.erase(0, interval_idx + boundary.length() + 2);
+	}
+	std::cout << json << std::endl;
+	this->raw_body = json;
+	
+	if (upload_file_list.size() == 0)
+		this->connection->getResponse().makeResponseMultipart();
+	else
+	{
+		FdType *multipart_fdtype = new FdType(UPLOAD_FILE_FDTYPE, this->getConnection(), upload_file_list);
+		std::map<pid_t, std::pair<std::string, size_t> > upload_fds = multipart_fdtype->getUploadFds();
+		for (std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_fds.begin(); it != upload_fds.end(); it++)
+		{
+			pid_t upload_fd = it->first;
+			Webserver::getWebserverInst()->setFdMap(upload_fd, multipart_fdtype);
+			Webserver::getWebserverInst()->getKq().createChangeListEvent(upload_fd, "W");
+		}
+	}
+}
+
+
+// only fill into this->rawbody
+bool Request::parseBody(void)
+{
+	std::multimap<std::string, std::string>::iterator iter;
+	std::size_t content_length = 0;
+	
+	iter = this->headers.find("content-length");
+	if (iter != this->headers.end())
+		content_length = atoi(iter->second.c_str());
+
+	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
+
+	if (this->body_type == MULTIPART || this->body_type == CONTENT_LENGTH)
+	{
+		if (this->temp_body.length() >= content_length)
+		{
+			this->raw_body += this->temp_body.substr(0, content_length);
+			this->temp_body.clear();
+			this->parse_status = PARSING_HEADER;
+			
+			std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
+			std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
+			std::cout << this->getRawBody() << std::endl;
+			std::cout << this->getRawBody().length() << std::endl;
+			std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
+			return (true);
+		}
+		return (false);
 	}
 
-	if (this->body_type == CONTENT_LENGTH && this->temp_body.length() >= content_length)
-	{
-		this->raw_body += this->temp_body.substr(0, content_length);
-		temp_body.clear();
-		this->parse_status = PARSING_HEADER;
-		return (true);
-	}
-	
 	if (this->body_type == CHUNKED)
 	{
 		std::size_t index = this->temp_body.find("\r\n");

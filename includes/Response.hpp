@@ -44,6 +44,7 @@ public:
 
 	void setConnection(Connection *connection);
 	void setResIdx(size_t res_idx);
+	void setBody(std::string body);
 
 	void initResponse(void);
 
@@ -89,6 +90,7 @@ public:
 	int makeResponseErrorResource(int curr_event_fd);
 	// void makeResponsePostPut(Request &request);
 	void makeResponsePostPut();
+	void makeResponseMultipart(std::string uploaded = "NOT");
 
 	std::map<std::string, std::string> &getStatusCode();
 	std::map<std::string, std::string> &getMimeType();

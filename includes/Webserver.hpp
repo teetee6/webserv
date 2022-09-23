@@ -83,6 +83,7 @@ public:
 
 	int isValidRequestwithConfig(Connection &connection);
 	
+	int isMultipart(Connection &connection, Location &location);
 	int isRedirect(Connection &connection, Location &location);
 	bool isCgi(Location &location, Request &request);
 	int isAutoIndex(Connection &connection, Location &location);
@@ -101,6 +102,7 @@ public:
 	int sendResponse(Connection &connection, int monitor_event_fd);
 	int makePostPutResponse(FdType *monitor_fd, int monitor_event_fd);
 	int writeOnPipe(FdType *monitor_fd, int monitor_event_fd);
+	int makeUploadResponse(FdType *monitor_fd, int monitor_event_fd);
 };
 
 #endif

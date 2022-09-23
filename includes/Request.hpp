@@ -4,7 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <time.h>
 
+#define MULTIPART 3
 #define CHUNKED 2
 #define CONTENT_LENGTH 1
 #define NOBODY 0
@@ -13,6 +15,7 @@
 #define PARSING_BODY 1
 
 class Connection;
+class Webserver;
 
 class Request
 {
@@ -47,6 +50,7 @@ private:
 	bool parseBody(void);
 
 public:
+	int upload_file;
 	Request(void);
 	Request(const Request &src);
 	virtual ~Request(void){};
@@ -66,6 +70,7 @@ public:
 
 	std::string &getPath(void);
 	Connection *getConnection(void);
+	int getBodyType(void);
 
 	void setPath(const std::string &path);
 	void setConnection(Connection *connection);
@@ -75,7 +80,7 @@ public:
 	void initRequest(void);
 
 	bool parseRequest(void);
-
+	void parseMultipart(void);
 };
 
 #endif

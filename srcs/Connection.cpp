@@ -76,35 +76,11 @@ Server *Connection::getServer()
 	return (this->server);
 }
 
-#include <fstream>
 // consider the situation of multiple requests.
 int Connection::readRequest(void)
 {
 	char buf[BUFFER_SIZE];
 	int readed;
-
-	// readed = read(this->socket_fd, buf, BUFFER_SIZE - 1);
-	// readed = recv(this->socket_fd, buf, 2048, 0);
-	// std::cout << "\x1b[34m" << "read_count: " << readed << "\x1b[0m" << std::endl;
-	// if (readed <= 0)
-	// {
-	// 	if (readed == 0)
-	// 	{
-	// 		std::cout << "hello, you didn't reply me so long time... so I'm gonna disconnect! Bye!\n";
-	// 		return (DISCONNECT_CONNECTION);
-	// 		// return -1238123;
-	// 	}
-	// 	else
-	// 	{
-	// 		std::cerr << "Connection read error!" << std::endl;
-	// 		return (DISCONNECT_CONNECTION);
-	// 	}
-	// }
-	// buf[readed] = 0;
-	// std::cout << "\x1b[31m""here----------------------------------------\n";
-	// std::cout << buf << std::endl;
-	// std::cout << "----------------------------------------here\n""\x1b[0m";
-	// this->request.setRawRequest(buf);
 
 	readed = recv(this->socket_fd, &buf, sizeof(buf), 0);
 	if (readed > 0)
@@ -113,9 +89,9 @@ int Connection::readRequest(void)
 		
 		std::string read_string(buf, readed);
 		// std::cout << "\x1b[34m" << "read_count: " << readed << "\x1b[0m" << std::endl;
-		// std::cout << "\x1b[31m""here----------------------------------------\n";
-		// std::cout << read_string << std::endl;
-		// std::cout << "----------------------------------------here\n""\x1b[0m";
+		// // if(read_string.find("chunked") != std::string::npos)
+		// // 	std::cout << "CHUNKED!" << std::endl;
+		// std::cout << "\x1b[31m" << read_string << "\x1b[0m" << std::endl;
 
 		this->request.setRawRequest(read_string);
 		if (this->request.parseRequest() == true)
@@ -124,18 +100,11 @@ int Connection::readRequest(void)
 			return true;
 		}
 	}
-	if (readed < 0)
+	if (readed < 0) // readed == 0일때
 	{
 		std::cerr << "Connection read error!" << std::endl;
 		return (DISCONNECT_CONNECTION);
 	}
 
-	// std::cout << "\x1b[32m""complete data----------------------------------------\n";
-	// std::cout << this->request.getRawRequest() << std::endl;
-	// std::cout << "----------------------------------------here\n""\x1b[0m";
-
-	// // this->request.setRawRequest(buf);
-	// if (this->request.parseRequest() == true)
-	// 	this->status = REQUEST_COMPLETE;
 	return (1);
 }

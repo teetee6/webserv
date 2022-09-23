@@ -158,6 +158,24 @@ int Webserver::isValidRequestwithConfig(Connection &connection)
 	return 0;
 }
 
+int Webserver::isMultipart(Connection &connection, Location &location)
+{
+	std::cout << "isMultipart" << std::endl;
+	if (connection.getRequest().getBodyType() == MULTIPART)
+	{
+		for(std::list<std::string>::const_iterator iter = location.getAllowMethods().begin(); iter != location.getAllowMethods().end(); iter++)
+		{
+			if (*iter == "POST")
+			{
+				connection.getRequest().parseMultipart();
+				return (0);
+			}
+		}
+	}
+
+	return (1);
+}
+
 int Webserver::isRedirect(Connection &connection, Location &location)
 {
 	std::cout << "isRedirect" << std::endl;
@@ -812,6 +830,54 @@ int Webserver::writeOnPipe(FdType *monitor_fd, int monitor_event_fd)
 	return 0;
 }
 
+int Webserver::makeUploadResponse(FdType *monitor_fd, int monitor_event_fd)
+{
+	std::map<pid_t, std::pair<std::string, size_t> > &upload_infos = monitor_fd->getUploadFds();
+	std::string upload_data = upload_infos[monitor_event_fd].first;
+	size_t &write_idx = upload_infos[monitor_event_fd].second;
+	if (write_idx >= upload_data.length())
+		return 77777;
+
+	// std::cout << "\x1b[35m" << monitor_event_fd << "씁니다" << "\x1b[0m" << std::endl;
+	int write_size = write(monitor_event_fd, upload_data.c_str() + write_idx, upload_data.length() - write_idx);
+	write_idx += write_size;
+	if (write_size == -1)
+	{
+		std::cerr << "temporary resource write error!" << std::endl;
+		return 404;
+	}
+	// if (write_idx >= upload_data.length())
+	// 	this->getKq().createChangeListEvent(monitor_event_fd, "W", "DISABLE");
+	
+	bool all_uploaded = true;
+	for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+	{
+		size_t upload_data_size = it->second.first.length();
+		size_t writed_size = it->second.second;
+		if (upload_data_size > writed_size)
+		{
+			all_uploaded = false;
+			break;
+		}
+	}
+	if (all_uploaded)
+	{
+		// std::cout << "\x1b[35m" << " 다 썻씁니다" << "\x1b[0m" << std::endl;
+		std::map<int, FdType *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
+		FdType *to_delete_fdtype = iter->second;
+
+		for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+		{
+			close(it->first);
+			this->getFdMap().erase(it->first);
+		}
+		monitor_fd->getConnection()->getResponse().makeResponseMultipart("UPLOADED");
+		delete to_delete_fdtype;
+	}
+
+	return 0;
+}
+
 bool Webserver::run()
 {
 	Webserver::getWebserverInst()->initKqueue();
@@ -837,13 +903,12 @@ bool Webserver::run()
 	return (true);
 }
 
+
+
 void Webserver::execMonitorEvent(struct kevent *monitor_event)
 {
-	// if (this->getFdMap().find(monitor_event->ident) == this->getFdMap().end())
-	// {
-	// 	std::cout << "못찾았다\n";
-	// 	return ;
-	// }
+	// if (this->getFdMap().find(monitor_event->ident) == this->getFdMap().end()){std::cout << "못찾았다\n";return ;} KqueueMonitorFd *selected_fd = this->getFdMap().find(selected_event->ident)->second;
+
 	FdType *monitor_fd = this->getFdMap().find(monitor_event->ident)->second;
 	if (monitor_fd == NULL)
 		return;
@@ -877,16 +942,11 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 	{
 		if (monitor_fd->getType() == SERVER_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "READ - SERVER_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
+			// std::cout << "\x1b[31m" << "READ - SERVER_FDTYPE"  << "\x1b[0m" << std::endl;
 			this->servers_fd[monitor_event->ident]->createConnection(monitor_event->ident);
 		}
 		else if (monitor_fd->getType() == CONNECTION_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "READ - CONNECTION_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			Connection *connection = monitor_fd->getConnection();
 			// if to improve RequestParse into multiple RequestsParse, the following should be made in vector like. only parse_status == HEADER would be appended to the vector. [parse_status, (method, uri, httpVersion), headers, raw_body]
 			if (connection->readRequest() == DISCONNECT_CONNECTION)
@@ -901,21 +961,20 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 					{
 						std::cout<<"\read disconnect = "<< monitor_event->ident<<std::endl;
 						this->disconnect_connection(*connection); 
-						// std::cout<<"==================\n"<<std::endl;
 						break;
 					}
 				}
 				return;
 			}
-			// std::cout << "status: " << connection->getStatus() << std::endl;
 			if (connection->getStatus() == REQUEST_COMPLETE)
 			{
 				std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
 				if (this->isValidRequestwithConfig(*connection) != 0)
 					return;
-				// std::cout << "here2\n";
 				
+				if (this->isMultipart(*connection, location) == 0)
+					return ;
 				if (this->isRedirect(*connection, location) == 0)
 					return ;
 				else if (this->isCgi(location, connection->getRequest())) 
@@ -930,25 +989,16 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "READ - FILE_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseGerneral(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "READ - CGI_READ_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseCgi(monitor_event->ident, monitor_fd->getConnection()->getRequest())==404)
 				return;
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "READ - ERROR_FILE_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(monitor_fd->getConnection()->getResponse().makeResponseErrorResource(monitor_event->ident)==404)
 				return;
 		}
@@ -957,9 +1007,6 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 	{
 		if (monitor_fd->getType() == CONNECTION_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "WRITE - CONNECTION_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			Connection *connection = monitor_fd->getConnection();
 			if (connection->getStatus() == RESPONSE_COMPLETE)
 			{
@@ -972,18 +1019,17 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 		// resource write - Only "PUT"
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "WRITE - FILE_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if (this->makePostPutResponse(monitor_fd, monitor_event->ident) == 404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)
 		{
-			// std::cout << "\x1b[31m""here----------------------------------------\n";
-			// std::cout << "WRITE - CGI_WRITE_FDTYPE" << std::endl;
-			// std::cout << "----------------------------------------here\n""\x1b[0m";
 			if(this->writeOnPipe(monitor_fd, monitor_event->ident) ==404)
+				return;
+		}
+		else if (monitor_fd->getType() == UPLOAD_FILE_FDTYPE)
+		{
+			if(this->makeUploadResponse(monitor_fd, monitor_event->ident) ==404)
 				return;
 		}
 	}

@@ -38,6 +38,20 @@ FdType::FdType(t_FdType type, Connection *connection, std::string data)
 	this->write_idx = 0;
 }
 
+FdType::FdType(t_FdType type, Connection *connection, std::vector<std::pair<std::string, std::string> > upload_file_list)
+{
+	this->type = type;
+	this->connection = connection;
+	this->upload_files = upload_file_list;
+	
+	for (size_t i = 0; i < upload_file_list.size(); i++)
+	{
+		pid_t fd = open((std::string("./upload/") + std::string("tmp__") + upload_file_list[i].first).c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0755);
+		this->upload_fds[fd] = std::pair<std::string, size_t>(upload_file_list[i].second, 0);
+	}
+	this->write_idx = 0;
+}
+
 FdType::~FdType()
 {
 	return;
@@ -73,119 +87,7 @@ void FdType::setWriteIdx(size_t write_idx)
 	this->write_idx = write_idx;
 }
 
-// ServerFD::ServerFD(t_FdType type)
-// {
-
-
-// 	this->type = type;
-// }
-// ServerFD::~ServerFD() {}
-
-// int FdType::getType()
-// {
-// 	return (this->type);
-// }
-
-// ConnectionFd::ConnectionFd(t_FdType type, Connection *connection)
-// {
-
-// 	this->type = type;
-// 	this->connection = connection;
-// }
-
-// ConnectionFd::~ConnectionFd() {}
-
-// Connection *ConnectionFd::getConnection()
-// {
-// 	return this->connection;
-// }
-
-// ResourceFD::ResourceFD(t_FdType type, Connection *connection)
-// {
-
-// 	this->type = type;
-// 	this->connection = connection;
-// 	this->data = NULL;
-// 	this->write_idx = 0;
-// }
-
-// ResourceFD::ResourceFD(t_FdType type, Connection *connection, const std::string &data)
-// {
-
-// 	this->type = type;
-// 	this->connection = connection;
-// 	this->write_idx = 0;
-// 	this->data = &data;
-// }
-
-// ResourceFD::ResourceFD(t_FdType type, pid_t pid, Connection *connection)
-// {
-
-// 	this->type = type;
-// 	this->pid = pid;
-// 	this->connection = connection;
-// 	this->data = NULL;
-// 	this->write_idx = 0;
-// }
-
-// ResourceFD::~ResourceFD() {}
-
-// Connection *ResourceFD::getConnection(void)
-// {
-// 	return (this->connection);
-// }
-
-// pid_t ResourceFD::getPid(void)
-// {
-// 	return (this->pid);
-// }
-
-// const std::string &ResourceFD::getData()
-// {
-// 	return (*this->data);
-// }
-
-// size_t ResourceFD::getWriteIdx()
-// {
-// 	return (this->write_idx);
-// }
-
-// void ResourceFD::setWriteIdx(size_t write_idx)
-// {
-// 	this->write_idx = write_idx;
-// }
-
-// PipeFd::PipeFd(t_FdType type, pid_t pid, Connection *connection, const std::string &data) : data(data)
-// {
-// 	this->type = type;
-// 	this->pid = pid;
-// 	this->connection = connection;
-// 	this->write_idx = 0;
-// }
-
-// PipeFd::~PipeFd() {}
-
-// Connection *PipeFd::getConnection(void)
-// {
-// 	return (this->connection);
-// }
-
-// pid_t PipeFd::getPid(void)
-// {
-// 	return (this->pid);
-// }
-
-// const std::string &PipeFd::getData()
-// {
-// 	return (this->data);
-// }
-
-// size_t PipeFd::getWriteIdx()
-// {
-// 	return (this->write_idx);
-// }
-
-// void PipeFd::setWriteIdx(size_t write_idx)
-// {
-// 	this->write_idx = write_idx;
-// }
+std::map<pid_t, std::pair<std::string, size_t> > &FdType::getUploadFds()
+{
+	return this->upload_fds;
+}
