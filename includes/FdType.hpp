@@ -49,7 +49,6 @@ private:
 	size_t write_idx;
 	pid_t pid;
 	std::vector<std::pair<std::string, std::string> > upload_files;
-	// std::vector<std::pair<pid_t, size_t> > upload_fds;
 	std::map<pid_t, std::pair<std::string, size_t> > upload_fds;
 
 public:

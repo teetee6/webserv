@@ -46,7 +46,7 @@ FdType::FdType(t_FdType type, Connection *connection, std::vector<std::pair<std:
 	
 	for (size_t i = 0; i < upload_file_list.size(); i++)
 	{
-		pid_t fd = open((std::string("./upload/") + std::string("tmp__") + upload_file_list[i].first).c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0755);
+		pid_t fd = open((upload_file_list[i].first).c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0755);
 		this->upload_fds[fd] = std::pair<std::string, size_t>(upload_file_list[i].second, 0);
 	}
 	this->write_idx = 0;

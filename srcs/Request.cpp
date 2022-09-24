@@ -364,10 +364,18 @@ void Request::parseMultipart(void)
 
 		if(filename.length())
 		{
-			upload_file_list.push_back(std::pair<std::string, std::string>(filename ,raw_data));
+			static char buf[1024];
+			static bool identify_upload_folder = false;
+			if (!identify_upload_folder)
+			{
+				realpath("./upload/", buf);
+				identify_upload_folder = true;
+			}
+			std::string tmp_filename = std::string(buf) + std::string("/") + std::string("tmp__") + filename;
+			upload_file_list.push_back(std::pair<std::string, std::string>(tmp_filename ,raw_data));
 
 			json += std::string("\"file_location\": ");
-			json += std::string("\"") + (std::string("tmp__") + filename) + std::string("\"");
+			json += std::string("\"") + tmp_filename + std::string("\"");
 			json += std::string(",");
 		}
 		else
