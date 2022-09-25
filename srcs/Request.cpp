@@ -331,8 +331,11 @@ void Request::parseMultipart(void)
 		if (name_s != std::string::npos)
 		{
 			name_s += 6;
-			size_t name_e = raw_head.find("\"", name_s + 1);
-			name = raw_head.substr(name_s, name_e - name_s);
+			size_t name_e = raw_head.find("\"", name_s);
+			if (name_e == name_s)
+				name = "";
+			else
+				name = raw_head.substr(name_s, name_e - name_s);
 			json += std::string("\"name\": ") + std::string("\"") + name + std::string("\"");
 			json += std::string(",");
 		}
@@ -342,8 +345,11 @@ void Request::parseMultipart(void)
 		if (filename_s != std::string::npos)
 		{
 			filename_s += 10;
-			size_t filename_e = raw_head.find("\"", filename_s + 1);
-			filename = raw_head.substr(filename_s, filename_e - filename_s);
+			size_t filename_e = raw_head.find("\"", filename_s);
+			if (filename_e == filename_s)
+				filename = "";
+			else
+				filename = raw_head.substr(filename_s, filename_e - filename_s);
 			json += std::string("\"filename\": ") + std::string("\"") + filename + std::string("\"");
 			json += std::string(",");
 		}

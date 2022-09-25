@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+  <meta charset="utf-8">
+    <title>HTML</title>
+    <style>
+      * {
+        font-size: 16px;
+        font-family: Consolas, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- <form method="post" action="/cgi-bin/post_result.php">
+		<p><label>file name : <input type="text" name="file_name"></label></p>
+		<p><label>description : <textarea type="text" name="file_description"> </textarea></label></p>
+
+      <p><input type="submit" value="Submit"></p>
+    </form> -->
+	<form method="post" enctype="multipart/form-data" action="/upload">
+		<p>file name : <input type="text" name="file_name"></p>
+		<p>description : <textarea type="text" name="file_description"> </textarea></p>
+		<p><input type="file" name="filename"></p>
+		<p><input type="file" name="filename2"></p>
+		<input type="submit">
+	  </form>
+  </body>
+</html>
