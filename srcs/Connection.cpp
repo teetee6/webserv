@@ -100,6 +100,5 @@ int Connection::readRequest(void)
 		std::cerr << "Connection read error!" << std::endl;
 		return (DISCONNECT_CONNECTION);
 	}
-
 	return (1);
 }

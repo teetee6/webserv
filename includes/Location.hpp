@@ -20,10 +20,10 @@ private:
 	std::list<std::string> index;
 	std::list<std::string> allow_methods;
 	std::map<int, std::string> error_pages;
-	int request_max_body_size;
+	int body_limit_size;
 	std::string upload_path;
 	bool auto_index;
-	std::map<std::string, std::string> cgi_infos;
+	std::map<std::string, std::string> cgi_paths;
 	std::string auth_key;
 	int redirect_return;
 	std::string redirect_addr;
@@ -39,10 +39,10 @@ public:
 	// set index;
 	// set allow_methods
 	// set error_page
-	void setRequestMaxBodySize(int request_max_body_size);
+	void setBodyLimitSize(int body_limit_size);
 	void setUploadPath(const std::string &upload_path);
 	void setAutoIndex(bool auto_index);
-	void setCgiInfos(std::map<std::string, std::string> &cgi_infos);
+	void setCgiPaths(std::map<std::string, std::string> &cgi_paths);
 	void setAuthKey(const std::string &auth_key);
 	void setRedirectReturn(int redirect_return);
 	void setRedirectAddr(const std::string &redirect_addr);
@@ -52,10 +52,10 @@ public:
 	std::list<std::string> &getIndex();
 	std::list<std::string> &getAllowMethods();
 	std::map<int, std::string> &getErrorPages();
-	int getRequestMaxBodySize();
+	int getBodyLimitSize();
 	const std::string &getUploadPath();
 	bool getAutoIndex();
-	std::map<std::string, std::string> &getCgiInfos();
+	std::map<std::string, std::string> &getCgiPaths();
 	const std::string &getAuthKey();
 	int getRedirectReturn();
 	const std::string &getRedirectAddr();

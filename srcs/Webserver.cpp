@@ -149,7 +149,7 @@ int Webserver::isValidRequestwithConfig(Connection &connection)
 		return (405);
 	}
 	
-	if (connection.getRequest().getRawBody().length() > static_cast<size_t>(location.getRequestMaxBodySize()))
+	if (connection.getRequest().getRawBody().length() > static_cast<size_t>(location.getBodyLimitSize()))
 	{
 		connection.getResponse().makeErrorResponse(413, &location);
 		return (413);
@@ -189,7 +189,7 @@ int Webserver::isRedirect(Connection &connection, Location &location)
 bool Webserver::isCgi(Location &location, Request &request)
 {
 	std::cout << "isCgi" << std::endl;
-	std::map<std::string, std::string> &cgi_infos = location.getCgiInfos();
+	std::map<std::string, std::string> &cgi_paths = location.getCgiPaths();
 
 	size_t dot_index = request.getUri().find('.'); // 14 (/cgi_bin/youpi.out)
 	if (dot_index == std::string::npos)
@@ -205,7 +205,7 @@ bool Webserver::isCgi(Location &location, Request &request)
 	std::map<std::string, std::string>::const_iterator extension_in_location;
 
 	//요청들어온 Cgi uri와 location cgi uri 비교
-	if ((extension_in_location = cgi_infos.find(extension)) == cgi_infos.end())
+	if ((extension_in_location = cgi_paths.find(extension)) == cgi_paths.end())
 		return (false);
 	while (request.getUri()[dot_index] != '/')
 		dot_index--;
@@ -570,7 +570,7 @@ bool Webserver::isCgiRequest(Location &location, Request &request)
 { // request의 cgiinfo와 Reuqset cgi정보 비교 후 cgi 환경변수 셋팅 및 실행 및 유효성 체크
 	// "locahost:8080/cgi_bin/youpi.out"
 
-	std::map<std::string, std::string> &cgi_infos = location.getCgiInfos();
+	std::map<std::string, std::string> &cgi_paths = location.getCgiPaths();
 	size_t dot_pos = request.getUri().find('.'); // 14 (/cgi_bin/youpi.out)
 
 	if (dot_pos == std::string::npos)
@@ -589,7 +589,7 @@ bool Webserver::isCgiRequest(Location &location, Request &request)
 	std::map<std::string, std::string>::const_iterator found;
 
 	//요청들어온 Cgi uri와 location cgi uri 비교
-	if ((found = cgi_infos.find(res)) == cgi_infos.end())
+	if ((found = cgi_paths.find(res)) == cgi_paths.end())
 	{
 		return (false);
 	}
@@ -894,7 +894,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 	
 	if (monitor_event->flags & EV_ERROR)
 	{
-		// std::cout << "is this seen-Error ?\n";
+		std::cout << "is this seen-Error ?\n";
 		if (monitor_fd->getType() == SERVER_FDTYPE)
 			std::cerr << "Server Error!" << std::endl;
 		else if (monitor_fd->getType() == CONNECTION_FDTYPE)
@@ -965,6 +965,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 					return;
 				
 			}
+			std::cout << "here8\n";
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{

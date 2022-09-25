@@ -19,8 +19,8 @@ static bool inLocationKeyword(const std::string &src)
 	if (src == "error_page" || src == "allow_methods" ||
 		src == "root" || src == "index" ||
 		src == "upload_path" ||	src == "auto_index" ||
-		src == "request_max_body_size" || src == "auth_key" ||
-		src == "cgi_info" || src == "return")
+		src == "body_limit_size" ||
+		src == "cgi_path" || src == "return")
 		return (true);
 	return (false);
 }
@@ -164,7 +164,7 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 								else
 									server_list[server_index].getLocations()[location_name].setAutoIndex(false);
 							}
-							else if (elem.compare("request_max_body_size") == 0)
+							else if (elem.compare("body_limit_size") == 0)
 							{
 								if (!(iss >> elem)) throw syntax_err_msg;
 
@@ -172,22 +172,22 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 								double limit_size = std::strtod(elem.c_str() , &trash);
 								if (*trash) throw syntax_err_msg;
 
-								server_list[server_index].getLocations()[location_name].setRequestMaxBodySize(static_cast<int>(limit_size));
+								server_list[server_index].getLocations()[location_name].setBodyLimitSize(static_cast<int>(limit_size));
 							}
-							else if (elem.compare("auth_key") == 0)
-							{
-								if (!(iss >> elem)) throw syntax_err_msg;
+							// else if (elem.compare("authorization") == 0)
+							// {
+							// 	if (!(iss >> elem)) throw syntax_err_msg;
 
-								server_list[server_index].getLocations()[location_name].setAuthKey(elem);
-							}
-							else if (elem.compare("cgi_info") == 0)
+							// 	server_list[server_index].getLocations()[location_name].setAuthKey(elem);
+							// }
+							else if (elem.compare("cgi_path") == 0)
 							{
 								if (!(iss >> elem)) throw syntax_err_msg;
 								std::string ext = elem;
 								if (!(iss >> elem)) throw syntax_err_msg;
 								std::string ext_path = elem;
 
-								server_list[server_index].getLocations()[location_name].getCgiInfos().insert(std::make_pair(ext, ext_path));
+								server_list[server_index].getLocations()[location_name].getCgiPaths().insert(std::make_pair(ext, ext_path));
 							}
 							else if (elem.compare("return") == 0)
 							{

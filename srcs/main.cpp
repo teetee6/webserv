@@ -35,8 +35,8 @@ void debug()
 			std::cout << std::endl;
 			std::cout << "Auto Index: " << (location.getAutoIndex() ? "on" : "off");
 			std::cout << std::endl;
-			std::cout << "cgi infos-\t";
-			for(std::map<std::string, std::string>::iterator it4 = location.getCgiInfos().begin(); it4 != location.getCgiInfos().end(); it4++)
+			std::cout << "cgi paths-\t";
+			for(std::map<std::string, std::string>::iterator it4 = location.getCgiPaths().begin(); it4 != location.getCgiPaths().end(); it4++)
 			{
 				std::cout << it4->first << ", " << it4->second << "\t";
 			}
@@ -59,7 +59,7 @@ void debug()
 			std::cout << std::endl;
 			std::cout << "Redirect Return: " <<location.getRedirectReturn();
 			std::cout << std::endl;
-			std::cout << "RequestMaxBodySize: " << location.getRequestMaxBodySize();
+			std::cout << "bodyLimitSize: " << location.getBodyLimitSize();
 			std::cout << std::endl;
 			std::cout << "root: " << location.getRoot();
 			std::cout << std::endl;
