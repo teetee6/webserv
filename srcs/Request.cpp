@@ -395,7 +395,7 @@ void Request::parseMultipart(void)
 		this->connection->getResponse().makeResponseMultipart();
 	else
 	{
-		FdType *multipart_fdtype = new FdType(UPLOAD_FILE_FDTYPE, this->getConnection(), upload_file_list);
+		KqueueMonitoredFdInfo *multipart_fdtype = new KqueueMonitoredFdInfo(UPLOAD_FILE_FDTYPE, this->getConnection(), upload_file_list);
 		std::map<pid_t, std::pair<std::string, size_t> > upload_fds = multipart_fdtype->getUploadFds();
 		for (std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_fds.begin(); it != upload_fds.end(); it++)
 		{

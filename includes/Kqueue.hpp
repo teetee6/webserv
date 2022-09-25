@@ -13,7 +13,7 @@
 #include <string>
 #include <sys/event.h>
 
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 
 class Kqueue
 {

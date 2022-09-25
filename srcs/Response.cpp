@@ -1,6 +1,6 @@
 #include "Response.hpp"
 #include "Request.hpp"
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 #include "Connection.hpp"
 #include "Server.hpp"
 #include "Webserver.hpp"
@@ -128,7 +128,7 @@ void Response::makeErrorResponse(int status, Location *location)
 			makeErrorResponse(500, NULL);
 			return;
 		}
-		FdType *error_file_instance = new FdType(ERROR_FILE_FDTYPE, this->connection);
+		KqueueMonitoredFdInfo *error_file_instance = new KqueueMonitoredFdInfo(ERROR_FILE_FDTYPE, this->connection);
 		Webserver::getWebserverInst()->setFdMap(error_file_fd, error_file_instance);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(error_file_fd, "R");
 	}
@@ -197,6 +197,7 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 			this->body += str + "\r\n";
 		}
 	}
+	closedir(dir_ptr);
 
 	this->body += "</pre>\r\n";
 	this->body += "<hr>\r\n";
@@ -340,7 +341,7 @@ int Response::makeResponseGerneral(int curr_event_fd, Request &request, long con
 	Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
 
 	std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
-	for (std::map<int, FdType *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
+	for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
 	// 	std::cout << iter->first << " AND, " << iter->second << std::endl;
 	// std::cout << "is this seen?\n";
 

@@ -111,7 +111,7 @@ int Server::createConnection(int server_fd)
 	this->connections[connection_fd].setStatus(REQUEST_RECEIVING); // 요청 중 or 요청 끝 or 응답 끝
 	this->connections[connection_fd].setServer(*this);
 
-	FdType *connection_fd_instance = new FdType(CONNECTION_FDTYPE, &this->connections[connection_fd]);
+	KqueueMonitoredFdInfo *connection_fd_instance = new KqueueMonitoredFdInfo(CONNECTION_FDTYPE, &this->connections[connection_fd]);
 	Webserver::getWebserverInst()->setFdMap(connection_fd, connection_fd_instance);
 	Webserver::getWebserverInst()->getKq().createChangeListEvent(connection_fd, "RW");
 	

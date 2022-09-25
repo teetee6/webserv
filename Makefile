@@ -1,7 +1,7 @@
 SRCNAME	= \
 	main.cpp\
 	Webserver.cpp\
-	FdType.cpp\
+	KqueueMonitoredFdInfo.cpp\
 	Server.cpp\
 	Location.cpp\
 	Kqueue.cpp\
