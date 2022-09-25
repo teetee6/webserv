@@ -428,14 +428,6 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				connection.getResponse().makeErrorResponse(404, &location);
 				return (404);
 			}
-			// struct stat sb;
-			// stat(res.c_str(), &sb);
-			// if (S_ISDIR(sb.st_mode))
-			// {
-			// 	connection.getResponse().makeErrorResponse(500, &location);
-			// 	return (500);
-			// }
-			// else
 			path = res;
 
 			connection.getRequest().setPath(path); // 완전한 파일경로
@@ -487,7 +479,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	{ // PUT 요청일때
 		std::cout << path << std::endl;
 
-		if(this->isDirectoryName(path))
+		if(this->isDirectoryName(path) == true)
 		{
 			connection.getResponse().makeErrorResponse(400, &location);
 			return (400);
