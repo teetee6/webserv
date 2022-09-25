@@ -9,7 +9,7 @@
 #include <string>
 #include <sys/stat.h>
 
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 
 class Server;
 class Location

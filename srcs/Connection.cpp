@@ -88,11 +88,6 @@ int Connection::readRequest(void)
 		buf[readed] = 0;
 		
 		std::string read_string(buf, readed);
-		// std::cout << "\x1b[34m" << "read_count: " << readed << "\x1b[0m" << std::endl;
-		// // if(read_string.find("chunked") != std::string::npos)
-		// // 	std::cout << "CHUNKED!" << std::endl;
-		// std::cout << "\x1b[31m" << read_string << "\x1b[0m" << std::endl;
-
 		this->request.setRawRequest(read_string);
 		if (this->request.parseRequest() == true)
 		{

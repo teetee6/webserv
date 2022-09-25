@@ -22,7 +22,7 @@
 
 #include <signal.h>
 
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 #include "Kqueue.hpp"
 #include "Cgi.hpp"
 
@@ -54,7 +54,7 @@ private:
 	std::vector<Server> real_server; // real server
 	std::map<int, Server *> servers_fd; // server fd and server pointer
 	Kqueue kq;
-	std::map<int, FdType *> fd_map; // 생성된 소켓fd와 소켓fd식별인스턴스 배열
+	std::map<int, KqueueMonitoredFdInfo *> fd_map; // 생성된 소켓fd와 소켓fd식별인스턴스 배열
 
 	bool returnFalseWithMsg(const char *str);
 	bool isReserved(const std::string &src);
@@ -69,13 +69,13 @@ public:
 	bool initKqueue();
 	bool initServers();
 	
-	void setFdMap(int fd, FdType *FdInstance);
+	void setFdMap(int fd, KqueueMonitoredFdInfo *FdInstance);
 	void clrFDonTable(int fd);
 
-	std::map<int, FdType *> &getFdMap();
+	std::map<int, KqueueMonitoredFdInfo *> &getFdMap();
 
-	bool run();
-	void execMonitorEvent(struct kevent *monitor_event);
+	bool execEventQueue();
+	void execMonitoredEvent(struct kevent *monitor_event);
 
 	Kqueue &getKq();
 
@@ -100,9 +100,9 @@ public:
 
 	void disconnect_connection(Connection &connection);
 	int sendResponse(Connection &connection, int monitor_event_fd);
-	int makePostPutResponse(FdType *monitor_fd, int monitor_event_fd);
-	int writeOnPipe(FdType *monitor_fd, int monitor_event_fd);
-	int makeUploadResponse(FdType *monitor_fd, int monitor_event_fd);
+	int makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd);
+	int writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd);
+	int makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd);
 };
 
 #endif

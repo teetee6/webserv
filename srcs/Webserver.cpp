@@ -28,16 +28,16 @@ bool Webserver::initKqueue()
 	return true;
 }
 
-void Webserver::setFdMap(int fd, FdType *FdInstance)
+void Webserver::setFdMap(int fd, KqueueMonitoredFdInfo *FdInstance)
 {
-	this->fd_map.insert(std::pair<int, FdType *>(fd, FdInstance));
+	this->fd_map.insert(std::pair<int, KqueueMonitoredFdInfo *>(fd, FdInstance));
 }
 
 // delete and close the fd from Webserver
 void Webserver::clrFDonTable(int fd)
 {
-	std::map<int, FdType *> _fd_map = this->getFdMap();
-	std::map<int, FdType *>::iterator iter = _fd_map.find(fd);
+	std::map<int, KqueueMonitoredFdInfo *> _fd_map = this->getFdMap();
+	std::map<int, KqueueMonitoredFdInfo *>::iterator iter = _fd_map.find(fd);
 	if (iter != this->getFdMap().end())
 	{
 		delete iter->second;
@@ -47,7 +47,7 @@ void Webserver::clrFDonTable(int fd)
 	close(fd);
 }
 
-std::map<int, FdType *> &Webserver::getFdMap()
+std::map<int, KqueueMonitoredFdInfo *> &Webserver::getFdMap()
 {
 	return this->fd_map;
 }
@@ -80,7 +80,7 @@ bool Webserver::initServers()
 		}
 		this->servers_fd[server_socket] = &(*iter);
 
-		FdType *server_fd_instance = new FdType(SERVER_FDTYPE);
+		KqueueMonitoredFdInfo *server_fd_instance = new KqueueMonitoredFdInfo(SERVER_FDTYPE);
 		setFdMap(server_socket, server_fd_instance);
 		this->servers_fd[server_socket]->setSocketFd(server_socket);
 		this->kq.createChangeListEvent(server_socket, "R");
@@ -302,6 +302,8 @@ std::string Webserver::isValidIndexFile(std::string path, Location &location)
 	return "404";
 }
 
+// 0 : path비포함(루트라서) 삭제
+// 1 : path포함 삭제
 int unlinkFileRmdirFolder(std::string dir, int level)
 { // 재귀로써 실질적인 폴더와 파일 삭제
 	DIR *dir_ptr;
@@ -322,24 +324,32 @@ int unlinkFileRmdirFolder(std::string dir, int level)
 		{
 			ret = unlinkFileRmdirFolder(dir + name, level + 1);
 			if (ret == 500)
+			{
+				closedir(dir_ptr);
 				return (500);
+			}
 		}
 		else
 			unlink((dir + name).c_str());
 	}
 	if (level > 0)
 		rmdir(dir.c_str());
+	closedir(dir_ptr);
 	return (200);
 }
 
 // delete inner files and folders, except the root folder
 
-
+// 0 : path비포함(루트라서) 삭제
+// 1 : path포함 삭제
 int Webserver::unlinkFileAndFolder(std::string path, int level)
 {	
-	if (opendir(path.c_str()) == NULL)
+	DIR *dir_ptr = opendir(path.c_str());
+	if (dir_ptr == NULL)
 		return 500;
-	return (unlinkFileRmdirFolder(path, level));
+	int ret_code = unlinkFileRmdirFolder(path, level);
+	closedir(dir_ptr);
+	return (ret_code);
 }
 
 int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
@@ -404,7 +414,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			return (500);
 		}
 
-		FdType *file_fd_instance = new FdType(FILE_FDTYPE, &connection);
+		KqueueMonitoredFdInfo *file_fd_instance = new KqueueMonitoredFdInfo(FILE_FDTYPE, &connection);
 		setFdMap(file_fd, file_fd_instance);
 		this->getKq().createChangeListEvent(file_fd, "R");
 	}
@@ -418,17 +428,17 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				connection.getResponse().makeErrorResponse(404, &location);
 				return (404);
 			}
-			struct stat sb;
-			stat(res.c_str(), &sb);
-			if (S_ISDIR(sb.st_mode))
-			{
-				connection.getResponse().makeErrorResponse(500, &location);
-				return (500);
-			}
-			else
-				path = res;
+			// struct stat sb;
+			// stat(res.c_str(), &sb);
+			// if (S_ISDIR(sb.st_mode))
+			// {
+			// 	connection.getResponse().makeErrorResponse(500, &location);
+			// 	return (500);
+			// }
+			// else
+			path = res;
 
-			connection.getRequest().setPath(path);
+			connection.getRequest().setPath(path); // 완전한 파일경로
 
 			int file_fd = open(path.c_str(), O_RDONLY);
 			if (file_fd == -1)
@@ -437,7 +447,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				return (500);
 			}
 
-			FdType *file_fd_instance = new FdType(FILE_FDTYPE, &connection);
+			KqueueMonitoredFdInfo *file_fd_instance = new KqueueMonitoredFdInfo(FILE_FDTYPE, &connection);
 			setFdMap(file_fd, file_fd_instance);
 			this->getKq().createChangeListEvent(file_fd, "R");
 			return 0;
@@ -449,44 +459,19 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			return 0;
 		}
 
-		if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
+		// if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
+		if (connection.getRequest().getBodyType() == MULTIPART)
 		{
 			connection.getResponse().makeResponsePostPut();
 			return 0;
 		}
 
-		struct stat sb;
-		stat(path.c_str(), &sb);
-
-		if (S_ISDIR(sb.st_mode))
+		if(this->isDirectoryName(path) >= 0)
 		{
+			std::cout << "already Exists!!\n";
 			connection.getResponse().makeErrorResponse(400, &location);
 			return (400);
 		}
-
-		// from now one, path is file type.
-		connection.getRequest().setPath(path);
-
-
-		std::string folder_path = path.substr(0, path.find_last_of("/")+1);
-		std::string filename_path = path.substr(path.find_last_of("/") + 1);
-		
-		DIR *dir_ptr;
-		struct dirent *file;
-		if ((dir_ptr = opendir(folder_path.c_str())) != NULL)
-		{
-			while((file = readdir(dir_ptr))!=NULL)
-			{
-				std::string filename = std::string(file->d_name);
-
-				if (filename == filename_path)
-				{
-					connection.getResponse().makeErrorResponse(400, &location);
-					return (400);
-				}
-			}
-		}
-
 
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
@@ -494,20 +479,15 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
-		FdType *file_fd_inst = new FdType(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
-		setFdMap(put_fd, file_fd_inst);
+		KqueueMonitoredFdInfo *file_fd_inst = new KqueueMonitoredFdInfo(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
+		this->setFdMap(put_fd, file_fd_inst);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(put_fd, "W");
 	}
 	else if (connection.getRequest().getMethod() == "PUT")
 	{ // PUT 요청일때
-		// http://localhost:8280/put_test -> path = ./tests/put_test = 404
-		// http://localhost:8280/put_test/ -> path = ./tests/put_test/ =400
-		// http://localhost:8280/put_test/temp.html/ ->, path = ./tests/put_test/temp.html/ = 400
-		// http://localhost:8280/put_test/temp.html ->path = ./tests/put_test/temp.html = 200
-		struct stat sb;
-		stat(path.c_str(), &sb);
+		std::cout << path << std::endl;
 
-		if (S_ISDIR(sb.st_mode))
+		if(this->isDirectoryName(path))
 		{
 			connection.getResponse().makeErrorResponse(400, &location);
 			return (400);
@@ -515,17 +495,13 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 
 		// from now one, path is file type.
 		connection.getRequest().setPath(path);
-
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
 		{
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
-		// std::cout << "확인용1\n";
-		// std::cout << connection.getRequest().getRawBody() << std::endl;
-		// std::cout << "확인용2\n";
-		FdType *file_fd_inst = new FdType(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
+		KqueueMonitoredFdInfo *file_fd_inst = new KqueueMonitoredFdInfo(FILE_FDTYPE, &connection, connection.getRequest().getRawBody());
 		setFdMap(put_fd, file_fd_inst);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(put_fd, "W");
 	}
@@ -535,9 +511,12 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		if (uri[uri.length() - 1] != '/')
 			uri_folder = uri + "/";
 
+		// uri matches to the root path of location
 		if (uri_folder == location.getLocationName())
 		{
+			std::cout << "here" << std::endl;
 			connection.getRequest().setPath(location.getRoot());
+			std::cout << location.getRoot() << std::endl;
 			int ret_code = this->unlinkFileAndFolder(location.getRoot(), 0);
 			if (ret_code == 500)
 			{
@@ -546,6 +525,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				return (500);
 			}
 			connection.getResponse().makeDeleteResponse(connection.getRequest());
+			
 			return (GENERAL_RESPONSE);
 		}
 
@@ -656,11 +636,11 @@ void Webserver::disconnect_connection(Connection &connection)
 	// std::cout << "error1 " << std::endl;
 	Connection *connection_pointer = &connection;
 	std::vector<int> to_delete_fds;
-	FdType *monitor_fd = NULL;
+	KqueueMonitoredFdInfo *monitor_fd = NULL;
 
-	std::map<int, FdType *> _fd_map = this->getFdMap();
+	std::map<int, KqueueMonitoredFdInfo *> _fd_map = this->getFdMap();
 	// std::cout << "error2 " << std::endl;
-	for (std::map<int, FdType *>::iterator iter = _fd_map.begin(); iter != _fd_map.end(); ++iter)
+	for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = _fd_map.begin(); iter != _fd_map.end(); ++iter)
 	{
 		// std::cout << "error2-2: " << iter->first << ", " << iter->second << std::endl;
 		monitor_fd = iter->second;
@@ -722,7 +702,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 		std::cout << "aaaaa" << std::endl;
 		if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end())
 		{
-			std::map<int, FdType *>::iterator iter;
+			std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
 			int i = 0;
 			for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
 			{
@@ -766,7 +746,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 
 // 	if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end() )
 // 	{
-// 		std::map<int, FdType *>::iterator iter;
+// 		std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
 // 		int i = 0;
 // 		for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
 // 		{
@@ -786,7 +766,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 // 	return 0;
 // }
 
-int Webserver::makePostPutResponse(FdType *monitor_fd, int monitor_event_fd)
+int Webserver::makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd)
 {
 	size_t write_idx = monitor_fd->getWriteIdx();
 	int write_size = write(monitor_event_fd, monitor_fd->getData().c_str() + write_idx, monitor_fd->getData().length() - write_idx);
@@ -804,7 +784,7 @@ int Webserver::makePostPutResponse(FdType *monitor_fd, int monitor_event_fd)
 	return 0;
 }
 
-int Webserver::writeOnPipe(FdType *monitor_fd, int monitor_event_fd)
+int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd)
 {
 	/*
 		(0		: child is still running)
@@ -830,7 +810,7 @@ int Webserver::writeOnPipe(FdType *monitor_fd, int monitor_event_fd)
 	return 0;
 }
 
-int Webserver::makeUploadResponse(FdType *monitor_fd, int monitor_event_fd)
+int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd)
 {
 	std::map<pid_t, std::pair<std::string, size_t> > &upload_infos = monitor_fd->getUploadFds();
 	std::string upload_data = upload_infos[monitor_event_fd].first;
@@ -863,8 +843,8 @@ int Webserver::makeUploadResponse(FdType *monitor_fd, int monitor_event_fd)
 	if (all_uploaded)
 	{
 		// std::cout << "\x1b[35m" << " 다 썻씁니다" << "\x1b[0m" << std::endl;
-		std::map<int, FdType *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
-		FdType *to_delete_fdtype = iter->second;
+		std::map<int, KqueueMonitoredFdInfo *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
+		KqueueMonitoredFdInfo *to_delete_fdtype = iter->second;
 
 		for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
 		{
@@ -878,7 +858,7 @@ int Webserver::makeUploadResponse(FdType *monitor_fd, int monitor_event_fd)
 	return 0;
 }
 
-bool Webserver::run()
+bool Webserver::execEventQueue()
 {
 	Webserver::getWebserverInst()->initKqueue();
 	Webserver::getWebserverInst()->initServers();
@@ -898,18 +878,17 @@ bool Webserver::run()
 
 		this->kq.getChangeList().clear();
 		for (int i = 0; i < monitor_event_num; ++i)
-			this->execMonitorEvent(&this->kq.event_list[i]);
+			this->execMonitoredEvent(&this->kq.event_list[i]);
 	}
 	return (true);
 }
 
 
 
-void Webserver::execMonitorEvent(struct kevent *monitor_event)
+void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 {
 	// if (this->getFdMap().find(monitor_event->ident) == this->getFdMap().end()){std::cout << "못찾았다\n";return ;} KqueueMonitorFd *selected_fd = this->getFdMap().find(selected_event->ident)->second;
-
-	FdType *monitor_fd = this->getFdMap().find(monitor_event->ident)->second;
+	KqueueMonitoredFdInfo *monitor_fd = this->getFdMap().find(monitor_event->ident)->second;
 	if (monitor_fd == NULL)
 		return;
 	
@@ -951,7 +930,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 			// if to improve RequestParse into multiple RequestsParse, the following should be made in vector like. only parse_status == HEADER would be appended to the vector. [parse_status, (method, uri, httpVersion), headers, raw_body]
 			if (connection->readRequest() == DISCONNECT_CONNECTION)
 			{
-				std::map<int, FdType *>::iterator iter;
+				std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
 				int i = 0;
 				for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
 				{
@@ -959,7 +938,7 @@ void Webserver::execMonitorEvent(struct kevent *monitor_event)
 						i++;
 					if(i>=1)
 					{
-						std::cout<<"\read disconnect = "<< monitor_event->ident<<std::endl;
+						std::cout<<"read disconnect = "<< monitor_event->ident<<std::endl;
 						this->disconnect_connection(*connection); 
 						break;
 					}

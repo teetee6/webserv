@@ -9,7 +9,7 @@
 #include <iostream>
 #include <unistd.h>
 
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
 

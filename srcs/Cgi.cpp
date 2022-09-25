@@ -3,7 +3,7 @@
 #include "Request.hpp"
 #include "Location.hpp"
 #include "Connection.hpp"
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 #include "Webserver.hpp"
 
 Cgi::Cgi(void)
@@ -99,11 +99,11 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 				// std::cout << request.getRawBody() << std::endl;
 				// std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 
-			FdType *pipe_fd = new FdType(CGI_WRITE_FDTYPE, request.getConnection(), this->pid, request.getRawBody());
+			KqueueMonitoredFdInfo *pipe_fd = new KqueueMonitoredFdInfo(CGI_WRITE_FDTYPE, request.getConnection(), this->pid, request.getRawBody());
 			Webserver::getWebserverInst()->setFdMap(this->request_fd[1], pipe_fd);
 			Webserver::getWebserverInst()->getKq().createChangeListEvent(this->request_fd[1], "W");
 		}
-		FdType *resource_fd = new FdType(CGI_READ_FDTYPE, request.getConnection(), this->pid);
+		KqueueMonitoredFdInfo *resource_fd = new KqueueMonitoredFdInfo(CGI_READ_FDTYPE, request.getConnection(), this->pid);
 		Webserver::getWebserverInst()->setFdMap(this->response_fd[0], resource_fd);
 		Webserver::getWebserverInst()->getKq().createChangeListEvent(this->response_fd[0], "R");
 

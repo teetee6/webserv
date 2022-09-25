@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 
-#include "FdType.hpp"
+#include "KqueueMonitoredFdInfo.hpp"
 // #include "Location.hpp"
 
 class Location;

@@ -11,7 +11,7 @@ class Request;
 class Location;
 class ResourceFD;
 class Connection;
-class FdType;
+class KqueueMonitoredFdInfo;
 
 class Response
 {
@@ -71,8 +71,8 @@ public:
 	// void makeStartLine();
 	void makeRawResponse(void);
 
-	//  void makeResponseCgiOrGerneral(FdType *resource_fd, int fd, Request &request, long to_read);
-	//  void makeResponseCgiOrGerneral(FdType *fd_in_FdMap, struct kevent *monitor_event);
+	//  void makeResponseCgiOrGerneral(KqueueMonitoredFdInfo *resource_fd, int fd, Request &request, long to_read);
+	//  void makeResponseCgiOrGerneral(KqueueMonitoredFdInfo *fd_in_FdMap, struct kevent *monitor_event);
 	//  bool applyCGIResponse(std::string &raw);
 	//  void makeCGIResponseHeader(Request &request);
 	 void makeResponseHeader(Request &request);
