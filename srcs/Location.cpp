@@ -1,7 +1,7 @@
 #include "Location.hpp"
 #include "Server.hpp"
 
-Location::Location() : request_max_body_size(-1), auto_index(false), redirect_return(-1)
+Location::Location() : body_limit_size(-1), auto_index(false), redirect_return(-1)
 { // location map<string,location> 리턴 할때 없으니까 map이라서 인스생성하는듯
 
 }
@@ -13,10 +13,10 @@ Location::Location(const Location &src)
 	this->index.assign(src.index.begin(), src.index.end());
 	this->allow_methods.assign(src.allow_methods.begin(), src.allow_methods.end());
 	this->error_pages.insert(src.error_pages.begin(), src.error_pages.end());
-	this->request_max_body_size = src.request_max_body_size;
+	this->body_limit_size = src.body_limit_size;
 	this->upload_path = src.upload_path;
 	this->auto_index = src.auto_index;
-	this->cgi_infos = src.cgi_infos;
+	this->cgi_paths = src.cgi_paths;
 	this->auth_key = src.auth_key;
 	this->redirect_return = src.redirect_return;
 	this->redirect_addr = src.redirect_addr;
@@ -31,11 +31,11 @@ Location &Location::operator=(const Location &src)
 	this->index.assign(src.index.begin(), src.index.end());
 	this->allow_methods.assign(src.allow_methods.begin(), src.allow_methods.end());
 	this->error_pages.insert(src.error_pages.begin(), src.error_pages.end());
-	this->request_max_body_size = src.request_max_body_size;
+	this->body_limit_size = src.body_limit_size;
 	this->upload_path = src.upload_path;
 	this->auto_index = src.auto_index;
-	this->cgi_infos.clear();
-	this->cgi_infos = src.cgi_infos;
+	this->cgi_paths.clear();
+	this->cgi_paths = src.cgi_paths;
 	this->auth_key = src.auth_key;
 	this->redirect_return = src.redirect_return;
 	this->redirect_addr = src.redirect_addr;
@@ -53,12 +53,9 @@ void Location::setRoot(const std::string &root)
 	return;
 }
 
-void Location::setRequestMaxBodySize(int request_max_body_size)
+void Location::setBodyLimitSize(int body_limit_size)
 {
-
-
-
-	this->request_max_body_size = request_max_body_size;
+	this->body_limit_size = body_limit_size;
 	return;
 }
 
@@ -75,9 +72,9 @@ void Location::setAutoIndex(bool auto_index)
 	return;
 }
 
-void Location::setCgiInfos(std::map<std::string, std::string> &cgi_infos)
+void Location::setCgiPaths(std::map<std::string, std::string> &cgi_paths)
 {
-	this->cgi_infos = cgi_infos;
+	this->cgi_paths = cgi_paths;
 	return;
 }
 
@@ -127,9 +124,9 @@ std::list<std::string> &Location::getAllowMethods()
 	return (this->allow_methods);
 }
 
-int Location::getRequestMaxBodySize()
+int Location::getBodyLimitSize()
 {
-	return (this->request_max_body_size);
+	return (this->body_limit_size);
 }
 
 std::map<int, std::string> &Location::getErrorPages()
@@ -148,10 +145,10 @@ bool Location::getAutoIndex()
 	return (this->auto_index);
 }
 
-std::map<std::string, std::string> &Location::getCgiInfos()
+std::map<std::string, std::string> &Location::getCgiPaths()
 {
 
-	return (this->cgi_infos);
+	return (this->cgi_paths);
 }
 
 const std::string &Location::getAuthKey()
