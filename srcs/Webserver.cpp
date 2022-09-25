@@ -906,16 +906,34 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		{
 			std::cerr << "resource error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
-			clrFDonTable(monitor_event->ident);
+			this->clrFDonTable(monitor_event->ident);
 		}
-		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)
+		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE || monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
 			std::cerr << "pipe error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
-			clrFDonTable(monitor_event->ident);
+			this->clrFDonTable(monitor_event->ident);
 		}
-		else
-		{}
+		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
+		{
+			std::cerr << "Error file error!" << std::endl;
+			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
+			this->clrFDonTable(monitor_event->ident);
+		}
+		else if (monitor_fd->getType() == UPLOAD_FILE_FDTYPE)
+		{
+			std::map<pid_t, std::pair<std::string, size_t> > &upload_infos = monitor_fd->getUploadFds();
+			std::map<int, KqueueMonitoredFdInfo *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
+			KqueueMonitoredFdInfo *to_delete_fdtype = iter->second;
+
+			for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+			{
+				close(it->first);
+				this->getFdMap().erase(it->first);
+			}
+			monitor_fd->getConnection()->getResponse().makeResponseMultipart("UPLOADED");
+			delete to_delete_fdtype;
+		}
 	}
 	if (monitor_event->filter == EVFILT_READ)
 	{

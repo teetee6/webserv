@@ -95,7 +95,7 @@ int Connection::readRequest(void)
 			return true;
 		}
 	}
-	if (readed < 0) // readed == 0일때
+	if (readed <= 0) // readed == 0일때
 	{
 		std::cerr << "Connection read error!" << std::endl;
 		return (DISCONNECT_CONNECTION);
