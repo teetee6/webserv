@@ -1,8 +1,3 @@
-// kqueue() = 정의
-// kqueue() = 생성
-// kqueue() = EV_SET
-// kqueue() = eventlist에 이벤트 할당
-
 #ifndef KQUEUE_HPP
 #define KQUEUE_HPP
 
@@ -19,7 +14,7 @@ class Kqueue
 {
 private:
 	int kq;
-	std::vector<struct kevent> change_list; //소켓fd로 생성한 이벤트 배열
+	std::vector<struct kevent> change_list;
 
 public:
 	struct kevent event_list[1024];

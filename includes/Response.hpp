@@ -53,7 +53,7 @@ public:
 	void makeErrorResponse(int status, Location *location);
 	void makeAutoIndexResponse(std::string &path, const std::string &uri, Location &location);
 
-	void generateErrorPage(int status);
+	void createErrorPage(int status);
 
 	// void generateAllow(Request &request);
 	// void generateDate(void);
@@ -75,27 +75,27 @@ public:
 	//  void makeResponseCgiOrGerneral(KqueueMonitoredFdInfo *fd_in_FdMap, struct kevent *monitor_event);
 	//  bool applyCGIResponse(std::string &raw);
 	//  void makeCGIResponseHeader(Request &request);
-	 void makeResponseHeader(Request &request);
+	//  void makeResponseHeader(Request &request);
 
 
-	 void makePutResponse(Request &request);
+	//  void makePutResponse(Request &request);
 	 /*
 		void makeDeleteResponse(Request &request);
 		void makeRedirectResponse(Location &location);
 	*/
 	void makeResponse(std::string method = "");
-	int makeResponseCgi(int curr_event_fd, Request &request);
-	void makeDeleteResponse(Request &request);
-	int makeResponseGerneral(int curr_event_fd, Request &request, long content_length);
-	int makeResponseErrorResource(int curr_event_fd);
+	int makeCgiResponse(int curr_event_fd, Request &request);
+	void makeDeleteResponse();
+	int makeGetHeadResponse(int curr_event_fd, Request &request, long content_length);
+	int makeErrorFileResponse(int curr_event_fd);
 	// void makeResponsePostPut(Request &request);
-	void makeResponsePostPut();
-	void makeResponseMultipart(std::string uploaded = "NOT");
+	void makePostPutResponse();
+	void makeMultipartResponse(std::string uploaded = "NOT");
 
 	std::map<std::string, std::string> &getStatusCode();
-	std::map<std::string, std::string> &getMimeType();
+	// std::map<std::string, std::string> &getMimeType();
 	void initStatusCode(void);
-	void initMimeType(void);
+	// void initMimeType(void);
 };
 
 #endif

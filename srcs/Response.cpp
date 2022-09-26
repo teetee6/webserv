@@ -11,7 +11,7 @@ Response::Response()
 	this->status = DEFAULT_STATUS;
 	this->connection = NULL;
 	this->res_idx = 0;
-	this->initMimeType();
+	// this->initMimeType();
 	this->initStatusCode();
 }
 
@@ -66,7 +66,7 @@ void Response::initResponse(void)
 }
 
 
-void Response::generateErrorPage(int status)
+void Response::createErrorPage(int status)
 {
 	this->status = status;
 	std::stringstream ss;
@@ -76,18 +76,7 @@ void Response::generateErrorPage(int status)
 	ss >> str;
 
 	this->body.clear();
-	this->body += "<html>\r\n";
-	this->body += "<head>\r\n";
-	this->body += "<title>" + str + " " + this->getStatusCode().find(str)->second + "</title>\r\n";
-	this->body += "</head>\r\n";
-	this->body += "<body bgcolor=\"white\">\r\n";
-	this->body += "<center>\r\n";
-	this->body += "<h1>" + str + " " + this->getStatusCode().find(str)->second + "</h1>\r\n";
-	this->body += "</center>\r\n";
-	this->body += "<hr>\r\n";
-	this->body += "<center>AeronHyosi/1.0</center>\r\n";
-	this->body += "</body>\r\n";
-	this->body += "</html>";
+	this->body += std::string("<html>\r\n") + std::string("<head>\r\n") + std::string("<title>") + str + std::string(" ") + std::string(this->getStatusCode().find(str)->second) + std::string("</title>\r\n") + std::string("</head>\r\n") + std::string("<body>\r\n") + std::string("<center>\r\n") + std::string("<h1>") + str + std::string(" ") + this->getStatusCode().find(str)->second + std::string("</h1>\r\n") + std::string("</center>\r\n") + std::string("<hr>\r\n") + std::string("<center>AeronHyosi/1.0</center>\r\n") + std::string("</body>\r\n") + std::string("</html>");
 }
 
 void Response::makeRedirectResponse(Location &location)
@@ -102,18 +91,18 @@ void Response::makeRedirectResponse(Location &location)
 // parse into this->headers and this->body, and then merge into this->raw_response
 void Response::makeErrorResponse(int status, Location *location)
 {
-
 	this->status = status;
 
 	// default ErrorPage
 	if (location == NULL || location->getErrorPages().count(status) == 0)
 	{
 		// std::cout << "1 NO" << status << "\n"; 
+		this->createErrorPage(status);
 		std::stringstream ss;
 		std::string str;
 		ss << this->body.length();
 		ss >> str;
-		this->generateErrorPage(status);
+		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
 		this->makeResponse();
 		this->connection->setStatus(RESPONSE_COMPLETE);
 		return;
@@ -151,15 +140,7 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 		return;
 	}
 
-	this->body += "<html>\r\n";
-	this->body += "<head>\r\n";
-	this->body += "<title>Index of " + uri + "</title>\r\n";
-	this->body += "<meta charset='UTF-8'>";
-	this->body += "</head>\r\n";
-	this->body += "<body bgcolor=\"white\">\r\n";
-	this->body += "<h1>Index of " + uri + "</h1>\r\n";
-	this->body += "<hr>\r\n";
-	this->body += "<pre>\r\n";
+	this->body = std::string("<html>\r\n") +std::string("<head>\r\n") +std::string("<title>Index of " + uri + "</title>\r\n") +std::string("<meta charset='UTF-8'>") +std::string("</head>\r\n") +std::string("<body bgcolor=\"white\">\r\n") +std::string("<h1>Index of " + uri + "</h1>\r\n") +std::string("<hr>\r\n") +std::string("<pre>\r\n");
 
 	while ((file = readdir(dir_ptr)) != NULL)
 	{
@@ -199,31 +180,14 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 	}
 	closedir(dir_ptr);
 
-	this->body += "</pre>\r\n";
-	this->body += "<hr>\r\n";
-	this->body += "</body>\r\n";
-	this->body += "</html>";
+	
+	this->body += std::string("</pre>\r\n") +std::string("<hr>\r\n") +std::string("</body>\r\n") +std::string("</html>");
 
 	this->status = 200;
 	this->headers.insert(std::pair<std::string, std::string>("Content-Type", "text/html"));
 
 	this->makeResponse();
 	this->connection->setStatus(RESPONSE_COMPLETE);
-}
-
-void Response::makeRawResponse(void)
-{
-	this->raw_response += this->start_line;
-	this->raw_response += "\r\n";
-	for (std::map<std::string, std::string>::const_iterator iter = this->headers.begin(); iter != this->headers.end(); iter++)
-	{
-		this->raw_response += iter->first;
-		this->raw_response += ": ";
-		this->raw_response += iter->second;
-		this->raw_response += "\r\n";
-	}
-	this->raw_response += "\r\n";
-	this->raw_response += this->body;
 }
 
 void Response::makeResponse(std::string method)
@@ -282,7 +246,7 @@ void Response::makeResponse(std::string method)
 
 	/* BODY */
 }
-void Response::makeResponsePostPut()
+void Response::makePostPutResponse()
 {
 	this->status = 201;
 	this->body = this->connection->getRequest().getRawBody();
@@ -290,7 +254,7 @@ void Response::makeResponsePostPut()
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
-void Response::makeResponseMultipart(std::string uploaded)
+void Response::makeMultipartResponse(std::string uploaded)
 {
 	if (uploaded == "UPLOADED")
 		this->status = 201;
@@ -301,24 +265,14 @@ void Response::makeResponseMultipart(std::string uploaded)
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
-// void Response::makeResponsePostPut(Request &request)
-// {
-// 	(void)request;
-// 	this->status = 201;
-// 	this->body = this->connection->getRequest().getRawBody();
-// 	this->makeResponse();
-// 	this->connection->setStatus(RESPONSE_COMPLETE);
-// }
-
-void Response::makeDeleteResponse(Request &request)
+void Response::makeDeleteResponse()
 { // delete 응답메시지 생성
-	(void)request;
 	this->status = 200;
 	this->makeResponse();
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
-int Response::makeResponseGerneral(int curr_event_fd, Request &request, long content_length)
+int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long content_length)
 {
 	// std::cout << "FILE_FDTYPE READ!!!\n";
 	// std::cout << "read from [" << curr_event_fd << "]\n";
@@ -330,7 +284,8 @@ int Response::makeResponseGerneral(int curr_event_fd, Request &request, long con
 	// std::cout << "Read_size: " << read_size << std::endl;
 	if (read_size == -1)
 	{
-		Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
+		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+		close(curr_event_fd);
 		this->makeErrorResponse(500, NULL); // 500 Error
 		return 404;
 	}
@@ -338,7 +293,8 @@ int Response::makeResponseGerneral(int curr_event_fd, Request &request, long con
 	this->body += std::string(buf);
 	if (content_length - read_size > 0)
 		return 0;
-	Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
+	Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+	close(curr_event_fd);
 
 	std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
 	for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
@@ -353,7 +309,7 @@ int Response::makeResponseGerneral(int curr_event_fd, Request &request, long con
 	return 0;
 }
 
-int Response::makeResponseCgi(int curr_event_fd, Request &request)
+int Response::makeCgiResponse(int curr_event_fd, Request &request)
 {
 	char buf[BUFFER_SIZE];
 	int read_size;
@@ -370,8 +326,9 @@ int Response::makeResponseCgi(int curr_event_fd, Request &request)
 	// std::cout << "buf = " << buf << std::endl;
 	if (read_size != 0)
 		return 0;
-	Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
-	
+	Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+	close(curr_event_fd);
+
 	if (cgi_raw.find("X-Powered-By:") != std::string::npos)
 	{
 		if (cgi_raw.substr(14, 3) == "PHP")
@@ -440,7 +397,7 @@ int Response::makeResponseCgi(int curr_event_fd, Request &request)
 	return 0;
 }
 
-int Response::makeResponseErrorResource(int curr_event_fd)
+int Response::makeErrorFileResponse(int curr_event_fd)
 {
 	char buf[BUFFER_SIZE + 1];
 	int read_size;
@@ -461,16 +418,18 @@ int Response::makeResponseErrorResource(int curr_event_fd)
 		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("Content-Length", ss.str()));
 		connection->getResponse().makeResponse();
 
-		Webserver::getWebserverInst()->clrFDonTable(curr_event_fd);
+		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+		close(curr_event_fd);
+
 		connection->setStatus(RESPONSE_COMPLETE);
 	}
 	return 0;
 }
 
-std::map<std::string, std::string> &Response::getMimeType()
-{
-	return (this->mime_type);
-}
+// std::map<std::string, std::string> &Response::getMimeType()
+// {
+// 	return (this->mime_type);
+// }
 
 std::map<std::string, std::string> &Response::getStatusCode()
 {
@@ -531,65 +490,4 @@ void Response::initStatusCode(void)
 	this->status_code["510"] = "Not Extened";
 	this->status_code["511"] = "Network Authentication Required";
 	this->status_code["599"] = "Network Connect Timeout Error";
-}
-void Response::initMimeType(void)
-{
-	this->mime_type[".aac"] = "audio/aac";
-	this->mime_type[".abw"] = "application/x-abiword";
-	this->mime_type[".arc"] = "application/octet-stream";
-	this->mime_type[".avi"] = "video/x-msvideo";
-	this->mime_type[".azw"] = "application/vnd.amazon.ebook";
-	this->mime_type[".bin"] = "application/octet-stream";
-	this->mime_type[".bz"] = "application/x-bzip";
-	this->mime_type[".bz2"] = "application/x-bzip2";
-	this->mime_type[".csh"] = "application/x-csh";
-	this->mime_type[".css"] = "text/css";
-	this->mime_type[".csv"] = "text/csv";
-	this->mime_type[".doc"] = "application/msword";
-	this->mime_type[".epub"] = "application/epub+zip";
-	this->mime_type[".gif"] = "image/gif";
-	this->mime_type[".htm"] = "text/html";
-	this->mime_type[".html"] = "text/html";
-	this->mime_type[".ico"] = "image/x-icon";
-	this->mime_type[".ics"] = "text/calendar";
-	this->mime_type[".jar"] = "Temporary Redirect";
-	this->mime_type[".jpeg"] = "image/jpeg";
-	this->mime_type[".jpg"] = "image/jpeg";
-	this->mime_type[".js"] = "application/js";
-	this->mime_type[".json"] = "application/json";
-	this->mime_type[".mid"] = "audio/midi";
-	this->mime_type[".midi"] = "audio/midi";
-	this->mime_type[".mpeg"] = "video/mpeg";
-	this->mime_type[".mpkg"] = "application/vnd.apple.installer+xml";
-	this->mime_type[".odp"] = "application/vnd.oasis.opendocument.presentation";
-	this->mime_type[".ods"] = "application/vnd.oasis.opendocument.spreadsheet";
-	this->mime_type[".odt"] = "application/vnd.oasis.opendocument.text";
-	this->mime_type[".oga"] = "audio/ogg";
-	this->mime_type[".ogv"] = "video/ogg";
-	this->mime_type[".ogx"] = "application/ogg";
-	this->mime_type[".pdf"] = "application/pdf";
-	this->mime_type[".ppt"] = "application/vnd.ms-powerpoint";
-	this->mime_type[".rar"] = "application/x-rar-compressed";
-	this->mime_type[".rtf"] = "application/rtf";
-	this->mime_type[".sh"] = "application/x-sh";
-	this->mime_type[".svg"] = "image/svg+xml";
-	this->mime_type[".swf"] = "application/x-shockwave-flash";
-	this->mime_type[".tar"] = "application/x-tar";
-	this->mime_type[".tif"] = "image/tiff";
-	this->mime_type[".tiff"] = "image/tiff";
-	this->mime_type[".ttf"] = "application/x-font-ttf";
-	this->mime_type[".vsd"] = " application/vnd.visio";
-	this->mime_type[".wav"] = "audio/x-wav";
-	this->mime_type[".weba"] = "audio/webm";
-	this->mime_type[".webm"] = "video/webm";
-	this->mime_type[".webp"] = "image/webp";
-	this->mime_type[".woff"] = "application/x-font-woff";
-	this->mime_type[".xhtml"] = "application/xhtml+xml";
-	this->mime_type[".xls"] = "application/vnd.ms-excel";
-	this->mime_type[".xml"] = "application/xml";
-	this->mime_type[".xul"] = "application/vnd.mozilla.xul+xml";
-	this->mime_type[".zip"] = "application/zip";
-	this->mime_type[".3gp"] = "video/3gpp audio/3gpp";
-	this->mime_type[".3g2"] = "video/3gpp2 audio/3gpp2";
-	this->mime_type[".7z"] = "application/x-7z-compressed";
 }

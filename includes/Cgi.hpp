@@ -26,7 +26,6 @@ public:
 
 	void cgiPipeFdSet(Request &request, Location &location, std::string &file_name, const std::string &ext_path);
 	char **setCgiEnvironment(Request &request, Location &location, std::string &file_path);
-	char **makeCgiEnvironment(std::map<std::string, std::string> &cgi_env);
 };
 
 #endif

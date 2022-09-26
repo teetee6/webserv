@@ -3,7 +3,6 @@
 
 Connection::Connection()
 {
-
 	this->server_socket_fd = -1;
 	this->socket_fd = -1;
 	this->status = REQUEST_RECEIVING;

@@ -11,45 +11,20 @@ SRCNAME	= \
 	Response.cpp\
 	ConfigParser.cpp\
 
-
 SRCDIR = ./srcs/
-
 SRCS = ${addprefix ${SRCDIR}, ${SRCNAME}}
+CPPFLAGS = -Wall -Wextra -Werror -std=c++98 -I ./includes/
 
-INC = -I ./includes/
+CPP = c++
 
 NAME = webserv
 
-CC = c++
-
-ifdef WITH_BONUS
-	CFLAGS = -Wall -Wextra -Werror -std=c++98 -D BONUS ${INC}
-else
-	CFLAGS = -Wall -Wextra -Werror -std=c++98 ${INC}
-endif
-
-DCFLAGS = -g3 -fsanitize=address # -D BONUS
-
 ${NAME} : $(SRCS)
-	${CC} ${CFLAGS} ${SRCS} -o ${NAME}
-
-test:
-	${CC} ${DCFLAGS} ${SRCS} ${INC} -o ${NAME}
-	rm -rf ./tests/put_test/file_should_exist_after
-	./webserv configs/test.conf
-
-# test_hyeonski:
-# 	${CC} ${DCFLAGS} ${SRCS} ${INC} -o ${NAME}
-# 	rm -rf ./tests/put_test/file_should_exist_after
-# 	rm -rf .res_*
-# 	./webserv configs/test_hyeonski.conf
-
-bonus:
-	make WITH_BONUS=1 all
+	${CPP} ${CPPFLAGS} ${SRCS} -o ${NAME}
 
 fclean:
-	rm -rf ./tests/put_test/file_should_exist_after
-	rm -rf ./tests/put_test/multiple_same
+	rm -rf ./YoupiBanane/test_output/file_should_exist_after
+	rm -rf ./YoupiBanane/test_output/multiple_same
 	rm -rf webserv.dSYM
 	rm -rf ${NAME}
 

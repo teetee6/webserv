@@ -34,7 +34,7 @@ void Webserver::setFdMap(int fd, KqueueMonitoredFdInfo *FdInstance)
 }
 
 // delete and close the fd from Webserver
-void Webserver::clrFDonTable(int fd)
+void Webserver::unsetFdMap(int fd)
 {
 	std::map<int, KqueueMonitoredFdInfo *> _fd_map = this->getFdMap();
 	std::map<int, KqueueMonitoredFdInfo *>::iterator iter = _fd_map.find(fd);
@@ -44,7 +44,6 @@ void Webserver::clrFDonTable(int fd)
 		iter->second = NULL;
 	}
 	this->getFdMap().erase(fd);
-	close(fd);
 }
 
 std::map<int, KqueueMonitoredFdInfo *> &Webserver::getFdMap()
@@ -435,6 +434,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			int file_fd = open(path.c_str(), O_RDONLY);
 			if (file_fd == -1)
 			{
+				std::cout<<"aa"<<std::endl;
 				connection.getResponse().makeErrorResponse(500, &location);
 				return (500);
 			}
@@ -444,17 +444,18 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			this->getKq().createChangeListEvent(file_fd, "R");
 			return 0;
 		}
+				std::cout<<"aa1"<<std::endl;
 
 		if (connection.getRequest().getRawBody().length() == 0)
 		{
-			connection.getResponse().makeResponsePostPut();
+			connection.getResponse().makePostPutResponse();
 			return 0;
 		}
 
 		// if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
 		if (connection.getRequest().getBodyType() == MULTIPART)
 		{
-			connection.getResponse().makeResponsePostPut();
+			connection.getResponse().makePostPutResponse();
 			return 0;
 		}
 
@@ -467,7 +468,8 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
-		{
+		{				std::cout<<"aa3"<<std::endl;
+
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
@@ -489,7 +491,8 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		connection.getRequest().setPath(path);
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
-		{
+		{				std::cout<<"aa5"<<std::endl;
+
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
@@ -516,7 +519,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				connection.getResponse().makeErrorResponse(500, &location);
 				return (500);
 			}
-			connection.getResponse().makeDeleteResponse(connection.getRequest());
+			connection.getResponse().makeDeleteResponse();
 			
 			return (GENERAL_RESPONSE);
 		}
@@ -550,7 +553,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				return (500);
 			}
 		}
-		connection.getResponse().makeDeleteResponse(connection.getRequest());
+		connection.getResponse().makeDeleteResponse();
 	}
 	else
 		connection.getResponse().makeErrorResponse(501, &location);
@@ -657,14 +660,18 @@ void Webserver::disconnect_connection(Connection &connection)
 	}
 	// std::cout << "error5 " << std::endl;
 	for (std::vector<int>::const_iterator iter = to_delete_fds.begin(); iter != to_delete_fds.end(); ++iter)
-		clrFDonTable(*iter);
+		{
+			unsetFdMap(*iter);
+			close(*iter);
+		}
 
 	// std::cout << "error6 " << std::endl;
 	int connection_fd = connection.getConnectionFd();
 	// std::cout << "error7 " << std::endl;
 	connection.getServer()->getConnections().erase(connection_fd);
 	// std::cout << "error8 " << std::endl;
-	clrFDonTable(connection_fd);
+	unsetFdMap(connection_fd);
+	close(connection_fd);
 	// std::cout << "error9 " << std::endl;
 }
 int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
@@ -715,49 +722,6 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 	return 0;
 }
 
-// int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
-// {
-// 	// std::cout << "write to [" << monitor_event_fd << "]\n";
-// 	size_t res_idx = connection.getResponse().getResIdx();
-
-// 	int write_size = write(monitor_event_fd, connection.getResponse().getRawResponse().c_str() + res_idx, connection.getResponse().getRawResponse().length() - res_idx);
-// 	if (write_size == -1)
-// 	{
-// 		this->disconnect_connection(connection);
-// 		std::cout << "With write error, disconnected: " << monitor_event_fd << std::endl;
-// 		return 404;
-// 	}
-// 	connection.getResponse().setResIdx(res_idx + write_size);
-// 	if (connection.getResponse().getResIdx() >= connection.getResponse().getRawResponse().length())
-// 	{
-// 		std::cout << "byebye~\n";
-// 		connection.getRequest().initRequest();
-// 		connection.getResponse().initResponse();
-// 		connection.setStatus(REQUEST_RECEIVING);
-// 	}
-
-// 	if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end() )
-// 	{
-// 		std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
-// 		int i = 0;
-// 		for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
-// 		{
-// 			if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
-// 				i++;
-// 			if(i>1)
-// 			{
-// 				std::cout<<"\nwrite disconnect = "<< monitor_event_fd<<std::endl;
-// 				this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
-// 				std::cout<<"==================\n"<<std::endl;
-// 				break;
-
-// 			}
-// 		}
-// 	}
-
-// 	return 0;
-// }
-
 int Webserver::makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_fd)
 {
 	size_t write_idx = monitor_fd->getWriteIdx();
@@ -770,8 +734,9 @@ int Webserver::makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monito
 	monitor_fd->setWriteIdx(write_idx + write_size);
 	if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
 	{
-		monitor_fd->getConnection()->getResponse().makeResponsePostPut();
-		this->clrFDonTable(monitor_event_fd);
+		monitor_fd->getConnection()->getResponse().makePostPutResponse();
+		this->unsetFdMap(monitor_event_fd);
+		close(monitor_event_fd);
 	}
 	return 0;
 }
@@ -784,7 +749,10 @@ int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_
 		(else	: Success on retrieving the child process's info that is ended)
 	*/
 	if (waitpid(monitor_fd->getPid(), NULL, WNOHANG) != 0)
-		this->clrFDonTable(monitor_event_fd);
+	{
+		this->unsetFdMap(monitor_event_fd);
+		close(monitor_event_fd);
+	}		
 	else
 	{
 		int write_idx = monitor_fd->getWriteIdx();
@@ -797,7 +765,10 @@ int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_
 		}
 		monitor_fd->setWriteIdx(write_idx + write_size);
 		if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
-			this->clrFDonTable(monitor_event_fd);
+		{
+			this->unsetFdMap(monitor_event_fd);
+			close(monitor_event_fd);
+		}			
 	}
 	return 0;
 }
@@ -810,7 +781,6 @@ int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor
 	if (write_idx >= upload_data.length())
 		return 77777;
 
-	// std::cout << "\x1b[35m" << monitor_event_fd << "씁니다" << "\x1b[0m" << std::endl;
 	int write_size = write(monitor_event_fd, upload_data.c_str() + write_idx, upload_data.length() - write_idx);
 	write_idx += write_size;
 	if (write_size == -1)
@@ -818,8 +788,6 @@ int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor
 		std::cerr << "temporary resource write error!" << std::endl;
 		return 404;
 	}
-	// if (write_idx >= upload_data.length())
-	// 	this->getKq().createChangeListEvent(monitor_event_fd, "W", "DISABLE");
 	
 	bool all_uploaded = true;
 	for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
@@ -843,7 +811,7 @@ int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor
 			close(it->first);
 			this->getFdMap().erase(it->first);
 		}
-		monitor_fd->getConnection()->getResponse().makeResponseMultipart("UPLOADED");
+		monitor_fd->getConnection()->getResponse().makeMultipartResponse("UPLOADED");
 		delete to_delete_fdtype;
 	}
 
@@ -898,19 +866,22 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		{
 			std::cerr << "resource error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
-			this->clrFDonTable(monitor_event->ident);
+			this->unsetFdMap(monitor_event->ident);
+			close(monitor_event->ident);
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE || monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
 			std::cerr << "pipe error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
-			this->clrFDonTable(monitor_event->ident);
+			this->unsetFdMap(monitor_event->ident);
+			close(monitor_event->ident);
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
 			std::cerr << "Error file error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
-			this->clrFDonTable(monitor_event->ident);
+			this->unsetFdMap(monitor_event->ident);
+			close(monitor_event->ident);
 		}
 		else if (monitor_fd->getType() == UPLOAD_FILE_FDTYPE)
 		{
@@ -923,7 +894,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 				close(it->first);
 				this->getFdMap().erase(it->first);
 			}
-			monitor_fd->getConnection()->getResponse().makeResponseMultipart("UPLOADED");
+			monitor_fd->getConnection()->getResponse().makeMultipartResponse("UPLOADED");
 			delete to_delete_fdtype;
 		}
 	}
@@ -979,17 +950,17 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
-			if(monitor_fd->getConnection()->getResponse().makeResponseGerneral(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
+			if(monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
-			if(monitor_fd->getConnection()->getResponse().makeResponseCgi(monitor_event->ident, monitor_fd->getConnection()->getRequest())==404)
+			if(monitor_fd->getConnection()->getResponse().makeCgiResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest())==404)
 				return;
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
-			if(monitor_fd->getConnection()->getResponse().makeResponseErrorResource(monitor_event->ident)==404)
+			if(monitor_fd->getConnection()->getResponse().makeErrorFileResponse(monitor_event->ident)==404)
 				return;
 		}
 	}

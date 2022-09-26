@@ -35,7 +35,7 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 	if (std::string(config_file_path) == "")
 	{
 		std::cout << "\t\tOPEN DEFAULT CONFIG FILE!\n";
-		fin.open("./configs/multiple_test.conf", std::ifstream::in);
+		fin.open("./configs/default_test.conf", std::ifstream::in);
 	}
 	else
 		fin.open(config_file_path, std::ifstream::in);

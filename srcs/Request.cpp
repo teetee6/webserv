@@ -4,7 +4,6 @@
 
 Request::Request(void)
 {
-
 	initRequest();
 }
 
@@ -50,10 +49,6 @@ Request &Request::operator=(const Request &src)
 
 	return (*this);
 }
-
-///////////////////////////
-/////////getter////////////
-///////////////////////////
 
 std::string &Request::getRawRequest(void)
 {
@@ -111,10 +106,6 @@ std::string &Request::getPath(void)
 	return (this->path);
 }
 
-///////////////////////////
-/////////getter_end////////
-///////////////////////////
-
 void Request::setConnection(Connection *connection)
 {
 	this->connection = connection;
@@ -136,8 +127,7 @@ void Request::setRawRequest(std::string str)
 }
 
 void Request::initRequest(void)
-{ // request 멤버변수 초기화
-
+{
 	this->method.clear();
 	this->uri.clear();
 	this->http_version.clear();
@@ -398,7 +388,7 @@ void Request::parseMultipart(void)
 	this->raw_body = json;
 	
 	if (upload_file_list.size() == 0)
-		this->connection->getResponse().makeResponseMultipart();
+		this->connection->getResponse().makeMultipartResponse();
 	else
 	{
 		KqueueMonitoredFdInfo *multipart_fdtype = new KqueueMonitoredFdInfo(UPLOAD_FILE_FDTYPE, this->getConnection(), upload_file_list);

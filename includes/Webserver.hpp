@@ -70,7 +70,7 @@ public:
 	bool initServers();
 	
 	void setFdMap(int fd, KqueueMonitoredFdInfo *FdInstance);
-	void clrFDonTable(int fd);
+	void unsetFdMap(int fd);
 
 	std::map<int, KqueueMonitoredFdInfo *> &getFdMap();
 

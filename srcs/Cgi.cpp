@@ -121,46 +121,15 @@ int *Cgi::getResponseFD(void) const
 	return (const_cast<int *>(this->response_fd));
 }
 
-// please trim
-char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string &file_path)
-{ // header처럼 cgi정보 할당한 내용을 동적할당 시켜서 리턴
 
+char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string &file_path)
+{
+	char **env;
+	int i = 0;
 
 	std::map<std::string, std::string> cgi_env;
+	std::multimap<std::string, std::string>::iterator iter;
 
-	// authorization 을 cgi_env에 Insert
-	std::multimap<std::string, std::string>::iterator iter;// = request.getHeaders().find("Authorization");
-	// if (iter != request.getHeaders().end() && iter->second != "")
-	// {
-	// 	std::size_t found = iter->second.find(' ');
-	// 	cgi_env.insert(std::pair<std::string, std::string>("AUTH_TYPE", iter->second.substr(0, found)));
-	// }
-
-	// content_length 을 cgi_env에 Insert
-	iter = request.getHeaders().find("content-length");
-	if (iter != request.getHeaders().end() && iter->second != "")
-		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", iter->second));
-	else if (((iter = request.getHeaders().find("Transfer-Encoding")) != request.getHeaders().end()) && iter->second == "chunked")
-	{
-		std::stringstream ss;
-		std::string str;
-		ss << request.getRawBody().length();
-		ss >> str;
-		// std::cout << "asdjklasdjaskldjaskldjaklsjdklasdjklasd" << std::endl;
-		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", str));
-	}
-	else
-		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_LENGTH", "0"));
-
-	// content_type 을 cgi_env에 Insert
-	iter = request.getHeaders().find("Content-Type");
-	if (iter != request.getHeaders().end() && iter->second != "")
-		cgi_env.insert(std::pair<std::string, std::string>("CONTENT_TYPE", iter->second));
-	
-	cgi_env.insert(std::pair<std::string, std::string>("GATEWAY_INTERFACE", "Cgi/1.1"));
-
-	// path_info 을 cgi_env에 Insert
-	// path_translated  을 cgi_env에 Insert
 	std::size_t back_pos = request.getUri().find('?');
 	std::size_t front_pos = request.getUri().rfind('.', back_pos);
 	std::string path_info = request.getUri().substr(front_pos, back_pos - front_pos);
@@ -170,39 +139,19 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	else
 		path_info = request.getUri();
 
-	cgi_env.insert(std::pair<std::string, std::string>("PATH_INFO", path_info)); // 잠시
 
+	cgi_env.insert(std::pair<std::string, std::string>("PATH_INFO", path_info)); // 잠시
 	cgi_env.insert(std::pair<std::string, std::string>("PATH_TRANSLATED", location.getRoot() + path_info.substr(1)));
 
-	// query_string 을 cgi_env에 Insert
-	if (request.getUri().find('?') != std::string::npos)
-		cgi_env.insert(std::pair<std::string, std::string>("QUERY_STRING", request.getUri().substr(request.getUri().find('?'))));
-
-	// request_method와 request_uri 을 cgi_env에 Insert
 	cgi_env.insert(std::pair<std::string, std::string>("REQUEST_METHOD", request.getMethod()));
 	cgi_env.insert(std::pair<std::string, std::string>("REQUEST_URI", request.getUri()));
 
-	// script_name 을 cgi_env에 Insert
-	if (request.getUri() == path_info)
-		cgi_env.insert(std::pair<std::string, std::string>("SCRIPT_NAME", location.getRoot() + path_info.substr(1)));
-	else if (request.getUri().find(path_info) == std::string::npos)
-	{
-		cgi_env.insert(std::pair<std::string, std::string>("SCRIPT_NAME", location.getRoot() + request.getUri().substr(1))); // 임시
-	}
-	else
-	{
-		std::size_t pos = request.getUri().rfind(path_info);
-		cgi_env.insert(std::pair<std::string, std::string>("SCRIPT_NAME", location.getRoot() + request.getUri().substr(1, pos - 1)));
-	}
-
-	// Script_filename  을 cgi_env에 Insert
 	size_t pos = file_path.find(".");
 	size_t pos2 = file_path.find("/", pos);
 	if (pos2 == std::string::npos)
 		pos2 = file_path.find("?", pos);
 	cgi_env.insert(std::pair<std::string, std::string>("SCRIPT_FILENAME", file_path.substr(0, pos2)));
 
-	// server정보를 cgi_env에 Insert
 	cgi_env.insert(std::pair<std::string, std::string>("SERVER_NAME", "127.0.0.1"));
 	{
 		std::stringstream ss;
@@ -214,19 +163,23 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	cgi_env.insert(std::pair<std::string, std::string>("SERVER_PROTOCOL", "HTTP/1.1"));
 	cgi_env.insert(std::pair<std::string, std::string>("SERVER_SOFTWARE", "AeronHyosi/1.0"));
 
-	// http Header 을 cgi_env에 Insert
 	for (std::map<std::string, std::string>::const_iterator iter = request.getHeaders().begin(); iter != request.getHeaders().end(); iter++)
 	{
-		cgi_env.insert(std::pair<std::string, std::string>("HTTP_" + iter->first, iter->second));
+		std::string tmp_str = iter->first;
+		std::transform(tmp_str.begin(), tmp_str.end(), tmp_str.begin(), ::toupper);
+		// for(std::string::iterator iter=tmp_str.begin();iter != tmp_string.end(); iter++)
+		// {
+		// }
+		size_t tmp_idx = tmp_str.find('-');
+		while(tmp_idx != std::string::npos)
+		{
+			tmp_str[tmp_idx] = '_';
+			tmp_idx = tmp_str.find('-');
+		}
+		
+		cgi_env.insert(std::pair<std::string, std::string>("HTTP_" + tmp_str, iter->second));
 	}
-	return (makeCgiEnvironment(cgi_env));
-}
 
-char **Cgi::makeCgiEnvironment(std::map<std::string, std::string> &cgi_env)
-{ // header처럼 cgi정보 할당한 내용을 키 = 밸류 형태로 바꾸고 동적할당 시키고 리턴
-
-	char **env;
-	int i = 0;
 
 	env = (char **)malloc(sizeof(char *) * (cgi_env.size() + 1));
 	for (std::map<std::string, std::string>::iterator iter = cgi_env.begin(); iter != cgi_env.end(); iter++)
@@ -237,5 +190,6 @@ char **Cgi::makeCgiEnvironment(std::map<std::string, std::string> &cgi_env)
 	}
 	env[i] = NULL;
 	return (env);
-}
 
+
+}
