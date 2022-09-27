@@ -140,16 +140,19 @@ Location &Webserver::findLocation(Server &server, const std::string &uri)
 
 int Webserver::isValidRequestwithConfig(Connection &connection)
 {
+	std::cout << "isValidRequestwithConfig" << std::endl;
 	Location &location = this->findLocation(*connection.getServer(), connection.getRequest().getUri());
 	
 	if (std::find(location.getAllowMethods().begin(), location.getAllowMethods().end(), connection.getRequest().getMethod()) == location.getAllowMethods().end())
 	{
+		std::cout << "isValidRequestwithConfig - Not allowed Method" << std::endl;
 		connection.getResponse().makeErrorResponse(405, &location); // HAKLA 같이 이상한 요청방식 보냈을떄
 		return (405);
 	}
 	
 	if (connection.getRequest().getRawBody().length() > static_cast<size_t>(location.getBodyLimitSize()))
 	{
+		std::cout << "isValidRequestwithConfig - bodyLimit!" << std::endl;
 		connection.getResponse().makeErrorResponse(413, &location);
 		return (413);
 	}
@@ -369,6 +372,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 
 	if (connection.getRequest().getMethod() == "GET" || connection.getRequest().getMethod() == "HEAD")
 	{
+		std::cout << "here - GET" << std::endl;
 		switch(this->isDirectoryName(path))
 		{
 			case -1 :
@@ -421,9 +425,11 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	{
 		if(path == location.getRoot())
 		{
+			std::cout << "here" << std::endl;
 			std::string res = this->isValidIndexFile(path, location); // index or autoindex(파일열림체크) or error 체크
 			if (res == "404")
 			{
+				std::cout << "here2" << std::endl;
 				connection.getResponse().makeErrorResponse(404, &location);
 				return (404);
 			}
@@ -434,17 +440,16 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			int file_fd = open(path.c_str(), O_RDONLY);
 			if (file_fd == -1)
 			{
-				std::cout<<"aa"<<std::endl;
+				std::cout << "here3" << std::endl;
 				connection.getResponse().makeErrorResponse(500, &location);
 				return (500);
 			}
-
+			std::cout << "here4" << std::endl;
 			KqueueMonitoredFdInfo *file_fd_instance = new KqueueMonitoredFdInfo(FILE_FDTYPE, &connection);
 			setFdMap(file_fd, file_fd_instance);
 			this->getKq().createChangeListEvent(file_fd, "R");
 			return 0;
 		}
-				std::cout<<"aa1"<<std::endl;
 
 		if (connection.getRequest().getRawBody().length() == 0)
 		{
@@ -468,8 +473,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
-		{				std::cout<<"aa3"<<std::endl;
-
+		{
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
@@ -491,8 +495,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		connection.getRequest().setPath(path);
 		int put_fd = this->createFileWithSetup(path); //폴더를 만들고 그걸 연 fd를 리턴하네
 		if (put_fd == -1)
-		{				std::cout<<"aa5"<<std::endl;
-
+		{
 			connection.getResponse().makeErrorResponse(500, &location);
 			return (500);
 		}
@@ -509,7 +512,6 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		// uri matches to the root path of location
 		if (uri_folder == location.getLocationName())
 		{
-			std::cout << "here" << std::endl;
 			connection.getRequest().setPath(location.getRoot());
 			std::cout << location.getRoot() << std::endl;
 			int ret_code = this->unlinkFileAndFolder(location.getRoot(), 0);
@@ -931,7 +933,10 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 				std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
 				if (this->isValidRequestwithConfig(*connection) != 0)
+				{
+					std::cout << "error in isValidRequestwithConfig!"<< std::endl;
 					return;
+				}
 				
 				if (this->isMultipart(*connection, location) == 0)
 					return ;
@@ -946,7 +951,6 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 					return;
 				
 			}
-			std::cout << "here8\n";
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{

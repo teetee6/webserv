@@ -61,9 +61,9 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 		if (file_name.substr(file_name.rfind('.')) == ".bla")
 		{
 			char **lst = (char **)malloc(sizeof(char *) * 2);
-			lst[0] = strdup("./cgi-bin/cgi_tester");
+			lst[0] = strdup("./cgi_tester");
 			lst[1] = NULL;
-			if (execve("./cgi-bin/cgi_tester", lst, env) == -1)
+			if (execve("./cgi_tester", lst, env) == -1)
 			{
 				std::cerr << "CGI EXECUTE ERROR: " << strerror(errno) << std::endl;
 				exit(1);
@@ -176,7 +176,6 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 			tmp_str[tmp_idx] = '_';
 			tmp_idx = tmp_str.find('-');
 		}
-		
 		cgi_env.insert(std::pair<std::string, std::string>("HTTP_" + tmp_str, iter->second));
 	}
 

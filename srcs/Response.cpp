@@ -96,7 +96,7 @@ void Response::makeErrorResponse(int status, Location *location)
 	// default ErrorPage
 	if (location == NULL || location->getErrorPages().count(status) == 0)
 	{
-		// std::cout << "1 NO" << status << "\n"; 
+		std::cout << "there is no errorpage\n";
 		this->createErrorPage(status);
 		std::stringstream ss;
 		std::string str;
@@ -110,6 +110,8 @@ void Response::makeErrorResponse(int status, Location *location)
 	// specific ErrorPage
 	else
 	{
+		std::cout << "there is errorpage\n";
+		std::cout << location->getErrorPages()[status] << std::endl;
 		// std::cout << "YES\n";
 		int error_file_fd = open(location->getErrorPages()[status].c_str(), O_RDONLY);
 		if (error_file_fd == -1)
