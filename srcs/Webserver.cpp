@@ -409,7 +409,6 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		}
 		// from now one, path is file type.
 		connection.getRequest().setPath(path);
-
 		int file_fd = open(path.c_str(), O_RDONLY);
 		if (file_fd == -1)
 		{
@@ -954,6 +953,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
+			std::cout << "FILE_FDTYPE - READ" << std::endl;
 			if(monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
 				return;
 		}

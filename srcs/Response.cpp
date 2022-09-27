@@ -282,8 +282,9 @@ int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long cont
 	char buf[BUFFER_SIZE];
 	int read_size;
 
+	std::cout << "content-length: " << content_length << std::endl;
 	read_size = read(curr_event_fd, buf, BUFFER_SIZE - 1);
-	// std::cout << "Read_size: " << read_size << std::endl;
+	std::cout << "Read_size: " << read_size << std::endl;
 	if (read_size == -1)
 	{
 		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
@@ -295,6 +296,7 @@ int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long cont
 	this->body += std::string(buf);
 	if (content_length - read_size > 0)
 		return 0;
+
 	Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
 	close(curr_event_fd);
 
