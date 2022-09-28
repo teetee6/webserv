@@ -311,7 +311,7 @@ int unlinkFileRmdirFolder(std::string dir, int level)
 	struct dirent *file;
 
 	if ((dir_ptr = opendir(dir.c_str())) == NULL)
-		return (500);
+		return (404);
 	if (dir[dir.length() - 1] != '/')
 		dir += '/';
 	std::string name;
@@ -324,10 +324,10 @@ int unlinkFileRmdirFolder(std::string dir, int level)
 		if (file->d_type == DT_DIR)
 		{
 			ret = unlinkFileRmdirFolder(dir + name, level + 1);
-			if (ret == 500)
+			if (ret == 404)
 			{
 				closedir(dir_ptr);
-				return (500);
+				return (404);
 			}
 		}
 		else
@@ -347,7 +347,7 @@ int Webserver::unlinkFileAndFolder(std::string path, int level)
 {
 	DIR *dir_ptr = opendir(path.c_str());
 	if (dir_ptr == NULL)
-		return 500;
+		return 404;
 	int ret_code = unlinkFileRmdirFolder(path, level);
 	closedir(dir_ptr);
 	return (ret_code);
@@ -369,7 +369,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			path = location.getRoot() + uri.substr(location.getLocationName().length());
 	}
 
-	if (connection.getRequest().getMethod() == "GET" || connection.getRequest().getMethod() == "HEAD")
+	if (connection.getRequest().getMethod() == "GET")
 	{
 		std::cout << "here - GET" << std::endl;
 		switch (this->isDirectoryName(path))
@@ -449,11 +449,17 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			return 0;
 		}
 
-		if (connection.getRequest().getRawBody().length() == 0)
+		if(path[path.length() - 1] == '/')
 		{
-			connection.getResponse().makePostPutResponse();
-			return 0;
+			connection.getResponse().makeErrorResponse(400, &location);
+			return (400);			
 		}
+
+		// if (connection.getRequest().getRawBody().length() == 0)
+		// {
+		// 	connection.getResponse().makePostPutResponse();
+		// 	return 0;
+		// }
 
 		// if (connection.getRequest().getRawBody().find("{\"data\" :[") != std::string::npos)
 		if (connection.getRequest().getBodyType() == MULTIPART)
@@ -482,6 +488,12 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	else if (connection.getRequest().getMethod() == "PUT")
 	{ // PUT 요청일때
 		std::cout << path << std::endl;
+
+		if(path[path.length() - 1] == '/')
+		{
+			connection.getResponse().makeErrorResponse(400, &location);
+			return (400);			
+		}
 
 		if (this->isDirectoryName(path) == true)
 		{
@@ -513,11 +525,11 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			connection.getRequest().setPath(location.getRoot());
 			std::cout << location.getRoot() << std::endl;
 			int ret_code = this->unlinkFileAndFolder(location.getRoot(), 0);
-			if (ret_code == 500)
+			if (ret_code == 404)
 			{
 				std::cerr << "opendir() error!" << std::endl;
-				connection.getResponse().makeErrorResponse(500, &location);
-				return (500);
+				connection.getResponse().makeErrorResponse(400, &location);
+				return (404);
 			}
 			connection.getResponse().makeDeleteResponse();
 
@@ -527,31 +539,31 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 		// std::string path = location.getRoot() + uri.substr(location.getLocationName().length());
 		switch (this->isDirectoryName(path))
 		{
-		case true:
-		{
-			if (path[path.length() - 1] != '/')
-				path += '/';
-			connection.getRequest().setPath(path);
-			int ret_code = this->unlinkFileAndFolder(path, 1);
-			if (ret_code == 500)
+			case true:
 			{
-				std::cerr << "opendir() error!" << std::endl;
-				connection.getResponse().makeErrorResponse(500, &location);
-				return (500);
+				if (path[path.length() - 1] != '/')
+					path += '/';
+				connection.getRequest().setPath(path);
+				int ret_code = this->unlinkFileAndFolder(path, 1);
+				if (ret_code == 404)
+				{
+					std::cerr << "opendir() error!" << std::endl;
+					connection.getResponse().makeErrorResponse(400, &location);
+					return (404);
+				}
+				break;
 			}
-			break;
-		}
-		case false:
-		{
-			connection.getRequest().setPath(path);
-			unlink(path.c_str());
-			break;
-		}
-		case -1:
-		{
-			connection.getResponse().makeErrorResponse(500, &location);
-			return (500);
-		}
+			case false:
+			{
+				connection.getRequest().setPath(path);
+				unlink(path.c_str());
+				break;
+			}
+			case -1:
+			{
+				connection.getResponse().makeErrorResponse(404, &location);
+				return (404);
+			}
 		}
 		connection.getResponse().makeDeleteResponse();
 	}
@@ -598,14 +610,17 @@ bool Webserver::isCgiRequest(Location &location, Request &request)
 	return (true);
 }
 
+// -1 return : the path ends with /
 int Webserver::createFileWithSetup(std::string path)
 {
 	size_t slash_idx;
 
+	std::cout << path << std::endl;
 	slash_idx = path.find("/");
 	while (slash_idx != std::string::npos)
 	{
 		std::string dirname = path.substr(0, slash_idx);
+		std::cout << dirname << std::endl;
 		mkdir(dirname.c_str(), 0755);
 		slash_idx = path.find("/", slash_idx + 1);
 	}
@@ -683,7 +698,7 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 	{
 		this->disconnect_connection(connection);
 		std::cout << "With write error, disconnected: " << monitor_event_fd << std::endl;
-		return 404;
+		return 500;
 	}
 	else if (write_size >= 0)
 	{
@@ -730,7 +745,7 @@ int Webserver::makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monito
 	if (write_size == -1)
 	{
 		std::cerr << "temporary resource write error!" << std::endl;
-		return 404;
+		return 500;
 	}
 	else if (write_size >= 0)
 	{
@@ -765,7 +780,7 @@ int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_
 		if (write_size == -1)
 		{
 			std::cerr << "temporary pipe write error!" << std::endl;
-			return 404;
+			return 500;
 		}
 		else if (write_size >= 0)
 		{
@@ -793,7 +808,7 @@ int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor
 	if (write_size == -1)
 	{
 		std::cerr << "temporary resource write error!" << std::endl;
-		return 404;
+		return 500;
 	}
 	else if(write_size >= 0)
 	{
@@ -958,17 +973,17 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
 			std::cout << "FILE_FDTYPE - READ" << std::endl;
-			if (monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data) == 404)
+			if (monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data) == 500)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
-			if (monitor_fd->getConnection()->getResponse().makeCgiResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest()) == 404)
+			if (monitor_fd->getConnection()->getResponse().makeCgiResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest()) == 500)
 				return;
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
-			if (monitor_fd->getConnection()->getResponse().makeErrorFileResponse(monitor_event->ident) == 404)
+			if (monitor_fd->getConnection()->getResponse().makeErrorFileResponse(monitor_event->ident) == 500)
 				return;
 		}
 	}
@@ -981,24 +996,24 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 			{
 				// std::cout << "(Write Event)::: changeList- " << this->getKq().getChangeList().size() << std::endl;
 				std::cout << "----->Now time to RESPONSE_COMPLETE\n";
-				if (this->sendResponse(*connection, monitor_event->ident) == 404)
+				if (this->sendResponse(*connection, monitor_event->ident) == 500)
 					return;
 			}
 		}
 		// resource write - Only "PUT"
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
-			if (this->makePostPutResponse(monitor_fd, monitor_event->ident) == 404)
+			if (this->makePostPutResponse(monitor_fd, monitor_event->ident) == 500)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)
 		{
-			if (this->writeOnPipe(monitor_fd, monitor_event->ident) == 404)
+			if (this->writeOnPipe(monitor_fd, monitor_event->ident) == 500)
 				return;
 		}
 		else if (monitor_fd->getType() == UPLOAD_FILE_FDTYPE)
 		{
-			if (this->makeUploadResponse(monitor_fd, monitor_event->ident) == 404)
+			if (this->makeUploadResponse(monitor_fd, monitor_event->ident) == 500)
 				return;
 		}
 	}

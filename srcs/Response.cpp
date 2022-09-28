@@ -84,6 +84,7 @@ void Response::makeRedirectResponse(Location &location)
 	this->status = location.getRedirectReturn();
 	this->headers.insert(std::pair<std::string, std::string>("Location", location.getRedirectAddr()));
 	this->makeResponse();
+	std::cout << this->getRawResponse() << std::endl;
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
@@ -233,9 +234,6 @@ void Response::makeResponse(std::string method)
 	}
 	// std::cout << "Start Line: " <<  this->start_line << std::endl;
 	
-	if (this->connection->getRequest().getMethod() == "HEAD")
-		this->body.clear();
-
 	this->raw_response += this->start_line;
 	this->raw_response += "\r\n";
 
@@ -296,7 +294,7 @@ int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long cont
 		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
 		close(curr_event_fd);
 		this->makeErrorResponse(500, NULL); // 500 Error
-		return 404;
+		return 500;
 	}
 	else if (read_size >= 0)
 	{
@@ -327,7 +325,7 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 	if (read_size == -1)
 	{
 		std::cerr << "temporary resource read error!" << std::endl;
-		return 404;
+		return 500;
 	}
 	buf[read_size] = '\0';
 
@@ -362,7 +360,7 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 	if (status_line.size() < 2)
 	{
 		this->makeErrorResponse(500, NULL);
-		return 404;
+		return 500;
 	}
 	this->status = atoi(status_line[1].c_str());
 
@@ -415,7 +413,7 @@ int Response::makeErrorFileResponse(int curr_event_fd)
 	if (read_size == -1)
 	{
 		std::cerr << "temporary resource read error!" << std::endl;
-		return 404;
+		return 500;
 	}
 	else if (read_size >= 0)
 	{
