@@ -57,7 +57,8 @@ bool Webserver::initServers()
 	{
 		struct sockaddr_in server_addr;
 		int server_socket = socket(PF_INET, SOCK_STREAM, 0);
-		if (server_socket == -1) throw "socket() error";
+		if (server_socket == -1)
+			throw "socket() error";
 
 		int option_value = 1; // set option(SO_REUSEADDR) ON(1)
 		setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &option_value, sizeof(int));
@@ -87,8 +88,6 @@ bool Webserver::initServers()
 	return (true);
 }
 
-
-
 Kqueue &Webserver::getKq()
 {
 	return this->kq;
@@ -111,7 +110,7 @@ Location &Webserver::findLocation(Server &server, const std::string &uri)
 	{
 		pos = uri.find('?');
 		if (pos != std::string::npos)
-			uri_loc = uri.substr(0, pos); // /dobby/hello 
+			uri_loc = uri.substr(0, pos); // /dobby/hello
 		else
 			uri_loc = uri;
 	}
@@ -142,21 +141,21 @@ int Webserver::isValidRequestwithConfig(Connection &connection)
 {
 	std::cout << "isValidRequestwithConfig" << std::endl;
 	Location &location = this->findLocation(*connection.getServer(), connection.getRequest().getUri());
-	
+
 	if (std::find(location.getAllowMethods().begin(), location.getAllowMethods().end(), connection.getRequest().getMethod()) == location.getAllowMethods().end())
 	{
 		std::cout << "isValidRequestwithConfig - Not allowed Method" << std::endl;
 		connection.getResponse().makeErrorResponse(405, &location); // HAKLA 같이 이상한 요청방식 보냈을떄
 		return (405);
 	}
-	
+
 	if (connection.getRequest().getRawBody().length() > static_cast<size_t>(location.getBodyLimitSize()))
 	{
 		std::cout << "isValidRequestwithConfig - bodyLimit!" << std::endl;
 		connection.getResponse().makeErrorResponse(413, &location);
 		return (413);
 	}
-	
+
 	return 0;
 }
 
@@ -165,7 +164,7 @@ int Webserver::isMultipart(Connection &connection, Location &location)
 	std::cout << "isMultipart" << std::endl;
 	if (connection.getRequest().getBodyType() == MULTIPART)
 	{
-		for(std::list<std::string>::const_iterator iter = location.getAllowMethods().begin(); iter != location.getAllowMethods().end(); iter++)
+		for (std::list<std::string>::const_iterator iter = location.getAllowMethods().begin(); iter != location.getAllowMethods().end(); iter++)
 		{
 			if (*iter == "POST")
 			{
@@ -222,7 +221,7 @@ bool Webserver::isCgi(Location &location, Request &request)
 int Webserver::isAutoIndex(Connection &connection, Location &location)
 {
 	std::cout << "isAutoIndex" << std::endl;
-	if(location.getAutoIndex() != true)
+	if (location.getAutoIndex() != true)
 		return 0;
 
 	if (connection.getRequest().getMethod() == "GET")
@@ -261,7 +260,7 @@ int Webserver::isAutoIndex(Connection &connection, Location &location)
 		// check if there is index file to read possible
 		if (connection.getRequest().getUri() == location.getLocationName())
 		{
-			for(std::list<std::string>::iterator iter = location.getIndex().begin(); iter != location.getIndex().end(); iter++)
+			for (std::list<std::string>::iterator iter = location.getIndex().begin(); iter != location.getIndex().end(); iter++)
 			{
 				if (access((path + (*iter)).c_str(), F_OK | R_OK) == 0)
 				{
@@ -271,7 +270,7 @@ int Webserver::isAutoIndex(Connection &connection, Location &location)
 			}
 		}
 		std::cout << "it's time to check autoIndex on \n";
-		
+
 		if (location.getAutoIndex())
 		{
 			// std::cout << "make autoIndex" << std::endl;
@@ -297,7 +296,7 @@ std::string Webserver::isValidIndexFile(std::string path, Location &location)
 	{
 		res = path;
 		res += *iter;
-		
+
 		if (stat(res.c_str(), &sb) == 0)
 			return res;
 	}
@@ -345,7 +344,7 @@ int unlinkFileRmdirFolder(std::string dir, int level)
 // 0 : path비포함(루트라서) 삭제
 // 1 : path포함 삭제
 int Webserver::unlinkFileAndFolder(std::string path, int level)
-{	
+{
 	DIR *dir_ptr = opendir(path.c_str());
 	if (dir_ptr == NULL)
 		return 500;
@@ -356,7 +355,7 @@ int Webserver::unlinkFileAndFolder(std::string path, int level)
 
 int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 {
-	std::cout << RED"defaultToHttpMethod"RESET << std::endl;
+	std::cout << RED "defaultToHttpMethod" RESET << std::endl;
 	std::string uri = connection.getRequest().getUri().substr(0, connection.getRequest().getUri().find('?')); //요청 uri중 ? 이전까지.
 	std::string path;
 
@@ -365,7 +364,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	else
 	{
 		if (uri == location.getLocationName().substr(0, location.getLocationName().length() - 1))
-			path = location.getRoot() + uri.substr(location.getLocationName().length()-1);
+			path = location.getRoot() + uri.substr(location.getLocationName().length() - 1);
 		else
 			path = location.getRoot() + uri.substr(location.getLocationName().length());
 	}
@@ -373,39 +372,39 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	if (connection.getRequest().getMethod() == "GET" || connection.getRequest().getMethod() == "HEAD")
 	{
 		std::cout << "here - GET" << std::endl;
-		switch(this->isDirectoryName(path))
+		switch (this->isDirectoryName(path))
 		{
-			case -1 :
+		case -1:
+		{
+			connection.getResponse().makeErrorResponse(404, &location);
+			return 404;
+			break;
+		}
+		case false:
+			std::cout << "not directory" << std::endl;
+			break;
+		case true:
+		{
+			std::cout << "is directory" << std::endl;
+			if (path[path.length() - 1] != '/')
+				path += "/";
+			// std::cout << path <<std::endl;
+			std::string res = this->isValidIndexFile(path, location); // index or autoindex(파일열림체크) or error 체크
+			if (res == "404")
 			{
 				connection.getResponse().makeErrorResponse(404, &location);
-				return 404;	
-				break;
+				return (404);
 			}
-			case false :
-				std::cout << "not directory" << std::endl;
-				break;
-			case true :
+			struct stat sb;
+			stat(res.c_str(), &sb);
+			if (S_ISDIR(sb.st_mode))
 			{
-				std::cout << "is directory" << std::endl;
-				if (path[path.length() - 1] != '/')
-					path += "/";
-				// std::cout << path <<std::endl;
-				std::string res = this->isValidIndexFile(path, location); // index or autoindex(파일열림체크) or error 체크
-				if (res == "404")
-				{
-					connection.getResponse().makeErrorResponse(404, &location);
-					return (404);
-				}
-				struct stat sb;
-				stat(res.c_str(), &sb);
-				if (S_ISDIR(sb.st_mode))
-				{
-					connection.getResponse().makeErrorResponse(500, &location);
-					return (500);
-				}
-				else
-					path = res;
+				connection.getResponse().makeErrorResponse(500, &location);
+				return (500);
 			}
+			else
+				path = res;
+		}
 		}
 		// from now one, path is file type.
 		connection.getRequest().setPath(path);
@@ -422,7 +421,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	}
 	else if (connection.getRequest().getMethod() == "POST")
 	{
-		if(path == location.getRoot())
+		if (path == location.getRoot())
 		{
 			std::cout << "here" << std::endl;
 			std::string res = this->isValidIndexFile(path, location); // index or autoindex(파일열림체크) or error 체크
@@ -463,7 +462,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 			return 0;
 		}
 
-		if(this->isDirectoryName(path) >= 0)
+		if (this->isDirectoryName(path) >= 0)
 		{
 			std::cout << "already Exists!!\n";
 			connection.getResponse().makeErrorResponse(400, &location);
@@ -484,7 +483,7 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 	{ // PUT 요청일때
 		std::cout << path << std::endl;
 
-		if(this->isDirectoryName(path) == true)
+		if (this->isDirectoryName(path) == true)
 		{
 			connection.getResponse().makeErrorResponse(400, &location);
 			return (400);
@@ -521,38 +520,38 @@ int Webserver::defaultToHttpMethod(Connection &connection, Location &location)
 				return (500);
 			}
 			connection.getResponse().makeDeleteResponse();
-			
+
 			return (GENERAL_RESPONSE);
 		}
 
 		// std::string path = location.getRoot() + uri.substr(location.getLocationName().length());
-		switch(this->isDirectoryName(path))
+		switch (this->isDirectoryName(path))
 		{
-			case true:
+		case true:
+		{
+			if (path[path.length() - 1] != '/')
+				path += '/';
+			connection.getRequest().setPath(path);
+			int ret_code = this->unlinkFileAndFolder(path, 1);
+			if (ret_code == 500)
 			{
-				if (path[path.length() - 1] != '/')
-					path += '/';
-				connection.getRequest().setPath(path);
-				int ret_code = this->unlinkFileAndFolder(path, 1);
-				if (ret_code == 500)
-				{
-					std::cerr << "opendir() error!" << std::endl;
-					connection.getResponse().makeErrorResponse(500, &location);
-					return (500);
-				}
-				break;
-			}
-			case false:
-			{
-				connection.getRequest().setPath(path);
-				unlink(path.c_str());
-				break;
-			}
-			case -1:
-			{
+				std::cerr << "opendir() error!" << std::endl;
 				connection.getResponse().makeErrorResponse(500, &location);
 				return (500);
 			}
+			break;
+		}
+		case false:
+		{
+			connection.getRequest().setPath(path);
+			unlink(path.c_str());
+			break;
+		}
+		case -1:
+		{
+			connection.getResponse().makeErrorResponse(500, &location);
+			return (500);
+		}
 		}
 		connection.getResponse().makeDeleteResponse();
 	}
@@ -578,9 +577,7 @@ bool Webserver::isCgiRequest(Location &location, Request &request)
 	while (ext_end != request.getUri().length() && request.getUri()[ext_end] != '/' && request.getUri()[ext_end] != '?')
 		ext_end++;
 
-	
 	std::string res = request.getUri().substr(dot_pos, ext_end - dot_pos); //요청 Uri에서 .과 / or ? 사이의 문자인 확장자 == .out
-
 
 	std::map<std::string, std::string>::const_iterator found;
 
@@ -592,7 +589,7 @@ bool Webserver::isCgiRequest(Location &location, Request &request)
 
 	while (request.getUri()[dot_pos] != '/')
 		dot_pos--;
-	
+
 	res = request.getUri().substr(dot_pos + 1, ext_end - dot_pos - 1); // youpi.out (Cgi경로에서 맨뒷부분)
 
 	Cgi cgi;
@@ -627,7 +624,7 @@ int Webserver::isDirectoryName(const std::string &path)
 void Webserver::disconnect_connection(Connection &connection)
 {
 	if (this->getFdMap().size() == 0)
-		return ;
+		return;
 
 	// std::cout << "error1 " << std::endl;
 	Connection *connection_pointer = &connection;
@@ -645,26 +642,26 @@ void Webserver::disconnect_connection(Connection &connection)
 			// std::cout << "error2-3: " << monitor_fd->getConnection()->getConnectionFd() << std::endl;
 			switch (monitor_fd->getType())
 			{
-				// case CONNECTION_FDTYPE:
-				case FILE_FDTYPE:
-				case CGI_WRITE_FDTYPE:
-					// std::cout << "error3 " << std::endl;
-					to_delete_fds.push_back(iter->first);
-					// std::cout << "error3-2 " << std::endl;
-					break;
-				case CGI_READ_FDTYPE:
-					// std::cout << "error4 " << std::endl;
-					kill(monitor_fd->getPid(), SIGKILL);
-					break;
+			// case CONNECTION_FDTYPE:
+			case FILE_FDTYPE:
+			case CGI_WRITE_FDTYPE:
+				// std::cout << "error3 " << std::endl;
+				to_delete_fds.push_back(iter->first);
+				// std::cout << "error3-2 " << std::endl;
+				break;
+			case CGI_READ_FDTYPE:
+				// std::cout << "error4 " << std::endl;
+				kill(monitor_fd->getPid(), SIGKILL);
+				break;
 			}
 		}
 	}
 	// std::cout << "error5 " << std::endl;
 	for (std::vector<int>::const_iterator iter = to_delete_fds.begin(); iter != to_delete_fds.end(); ++iter)
-		{
-			unsetFdMap(*iter);
-			close(*iter);
-		}
+	{
+		unsetFdMap(*iter);
+		close(*iter);
+	}
 
 	// std::cout << "error6 " << std::endl;
 	int connection_fd = connection.getConnectionFd();
@@ -688,38 +685,41 @@ int Webserver::sendResponse(Connection &connection, int monitor_event_fd)
 		std::cout << "With write error, disconnected: " << monitor_event_fd << std::endl;
 		return 404;
 	}
-	connection.getResponse().setResIdx(res_idx + write_size);
-	if (connection.getResponse().getResIdx() >= connection.getResponse().getRawResponse().length())
+	else if (write_size >= 0)
 	{
-		std::cout << "byebye~\n";
-		connection.getRequest().initRequest();
-		connection.getResponse().initResponse();
-		connection.setStatus(REQUEST_RECEIVING);
-	}
-
-	if (uri == "/siege.html")
-	{
-		std::cout << "aaaaa" << std::endl;
-		if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end())
+		connection.getResponse().setResIdx(res_idx + write_size);
+		if (connection.getResponse().getResIdx() >= connection.getResponse().getRawResponse().length())
 		{
-			std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
-			int i = 0;
-			for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
+			std::cout << "byebye~\n";
+			connection.getRequest().initRequest();
+			connection.getResponse().initResponse();
+			connection.setStatus(REQUEST_RECEIVING);
+		}
+
+		// 에러일때도 바로 여기서 끊어주자
+		if (uri == "/siege.html")
+		{
+			std::cout << "/siege.html" << std::endl;
+			if (this->getFdMap().find(monitor_event_fd) != this->getFdMap().end())
 			{
-				if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
-					i++;
-				if (i > 1)
+				std::map<int, KqueueMonitoredFdInfo *>::iterator iter;
+				int i = 0;
+				for (iter = this->fd_map.begin(); iter != this->fd_map.end(); iter++)
 				{
-					std::cout << "\nwrite disconnect = " << monitor_event_fd << std::endl;
-					this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
-					std::cout << "==================\n"
-										<< std::endl;
-					break;
+					if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
+						i++;
+					if (i > 1)
+					{
+						std::cout << "\nwrite disconnect = " << monitor_event_fd << std::endl;
+						this->disconnect_connection(connection); // fd인스인 리소스인스와 파이프인스에 해당 Connection인스 연결되어 있으면 앞선 2개 인스를 fd_delete_fds에 입력. cgi있으면 kill pid()
+						std::cout << "==================\n"
+								<< std::endl;
+						break;
+					}
 				}
 			}
 		}
 	}
-
 	return 0;
 }
 
@@ -732,12 +732,15 @@ int Webserver::makePostPutResponse(KqueueMonitoredFdInfo *monitor_fd, int monito
 		std::cerr << "temporary resource write error!" << std::endl;
 		return 404;
 	}
-	monitor_fd->setWriteIdx(write_idx + write_size);
-	if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
+	else if (write_size >= 0)
 	{
-		monitor_fd->getConnection()->getResponse().makePostPutResponse();
-		this->unsetFdMap(monitor_event_fd);
-		close(monitor_event_fd);
+		monitor_fd->setWriteIdx(write_idx + write_size);
+		if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
+		{
+			monitor_fd->getConnection()->getResponse().makePostPutResponse();
+			this->unsetFdMap(monitor_event_fd);
+			close(monitor_event_fd);
+		}
 	}
 	return 0;
 }
@@ -753,7 +756,7 @@ int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_
 	{
 		this->unsetFdMap(monitor_event_fd);
 		close(monitor_event_fd);
-	}		
+	}
 	else
 	{
 		int write_idx = monitor_fd->getWriteIdx();
@@ -764,12 +767,15 @@ int Webserver::writeOnPipe(KqueueMonitoredFdInfo *monitor_fd, int monitor_event_
 			std::cerr << "temporary pipe write error!" << std::endl;
 			return 404;
 		}
-		monitor_fd->setWriteIdx(write_idx + write_size);
-		if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
+		else if (write_size >= 0)
 		{
-			this->unsetFdMap(monitor_event_fd);
-			close(monitor_event_fd);
-		}			
+			monitor_fd->setWriteIdx(write_idx + write_size);
+			if (monitor_fd->getWriteIdx() >= monitor_fd->getData().length())
+			{
+				this->unsetFdMap(monitor_event_fd);
+				close(monitor_event_fd);
+			}
+		}		
 	}
 	return 0;
 }
@@ -789,33 +795,34 @@ int Webserver::makeUploadResponse(KqueueMonitoredFdInfo *monitor_fd, int monitor
 		std::cerr << "temporary resource write error!" << std::endl;
 		return 404;
 	}
-	
-	bool all_uploaded = true;
-	for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+	else if(write_size >= 0)
 	{
-		size_t upload_data_size = it->second.first.length();
-		size_t writed_size = it->second.second;
-		if (upload_data_size > writed_size)
+		bool all_uploaded = true;
+		for (std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
 		{
-			all_uploaded = false;
-			break;
+			size_t upload_data_size = it->second.first.length();
+			size_t writed_size = it->second.second;
+			if (upload_data_size > writed_size)
+			{
+				all_uploaded = false;
+				break;
+			}
+		}
+		if (all_uploaded)
+		{
+			// std::cout << "\x1b[35m" << " 다 썻씁니다" << "\x1b[0m" << std::endl;
+			std::map<int, KqueueMonitoredFdInfo *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
+			KqueueMonitoredFdInfo *to_delete_fdtype = iter->second;
+
+			for (std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+			{
+				close(it->first);
+				this->getFdMap().erase(it->first);
+			}
+			monitor_fd->getConnection()->getResponse().makeMultipartResponse("UPLOAD");
+			delete to_delete_fdtype;
 		}
 	}
-	if (all_uploaded)
-	{
-		// std::cout << "\x1b[35m" << " 다 썻씁니다" << "\x1b[0m" << std::endl;
-		std::map<int, KqueueMonitoredFdInfo *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
-		KqueueMonitoredFdInfo *to_delete_fdtype = iter->second;
-
-		for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
-		{
-			close(it->first);
-			this->getFdMap().erase(it->first);
-		}
-		monitor_fd->getConnection()->getResponse().makeMultipartResponse("UPLOADED");
-		delete to_delete_fdtype;
-	}
-
 	return 0;
 }
 
@@ -824,13 +831,13 @@ bool Webserver::execEventQueue()
 	Webserver::getWebserverInst()->initKqueue();
 	Webserver::getWebserverInst()->initServers();
 
-	// struct timespec timeout;
-	// timeout.tv_sec = 0;
-	// timeout.tv_nsec = 0;
+	struct timespec timeout;
+	timeout.tv_sec = 3;
+	timeout.tv_nsec = 0;
 
 	while (1)
 	{
-		int monitor_event_num = kevent(this->kq.getKqueue(), &this->kq.getChangeList()[0], this->kq.getChangeList().size(), this->kq.event_list, 1024, NULL); 
+		int monitor_event_num = kevent(this->kq.getKqueue(), &this->kq.getChangeList()[0], this->kq.getChangeList().size(), this->kq.event_list, 1024, &timeout);
 		if (monitor_event_num < 0)
 		{
 			std::cerr << "kevent error" << std::endl;
@@ -844,15 +851,13 @@ bool Webserver::execEventQueue()
 	return (true);
 }
 
-
-
 void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 {
 	// if (this->getFdMap().find(monitor_event->ident) == this->getFdMap().end()){std::cout << "못찾았다\n";return ;} KqueueMonitorFd *selected_fd = this->getFdMap().find(selected_event->ident)->second;
 	KqueueMonitoredFdInfo *monitor_fd = this->getFdMap().find(monitor_event->ident)->second;
 	if (monitor_fd == NULL)
 		return;
-	
+
 	if (monitor_event->flags & EV_ERROR)
 	{
 		std::cout << "is this seen-Error ?\n";
@@ -863,7 +868,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 			std::cerr << "connection error!" << std::endl;
 			disconnect_connection(*(monitor_fd->getConnection()));
 		}
-		else if (monitor_fd->getType() == FILE_FDTYPE) // CGI_READ_FDTYPE도 
+		else if (monitor_fd->getType() == FILE_FDTYPE) // CGI_READ_FDTYPE도
 		{
 			std::cerr << "resource error!" << std::endl;
 			monitor_fd->getConnection()->getResponse().makeErrorResponse(500, NULL);
@@ -890,7 +895,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 			std::map<int, KqueueMonitoredFdInfo *>::iterator iter = this->getFdMap().find(upload_infos.begin()->first);
 			KqueueMonitoredFdInfo *to_delete_fdtype = iter->second;
 
-			for(std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
+			for (std::map<pid_t, std::pair<std::string, size_t> >::iterator it = upload_infos.begin(); it != upload_infos.end(); it++)
 			{
 				close(it->first);
 				this->getFdMap().erase(it->first);
@@ -918,10 +923,10 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 				{
 					if (iter->second->getType() == CONNECTION_FDTYPE) // 서버 에러 - 프로그램 터짐
 						i++;
-					if(i>=1)
+					if (i >= 1)
 					{
-						std::cout<<"read disconnect = "<< monitor_event->ident<<std::endl;
-						this->disconnect_connection(*connection); 
+						std::cout << "read disconnect = " << monitor_event->ident << std::endl;
+						this->disconnect_connection(*connection);
 						break;
 					}
 				}
@@ -933,38 +938,37 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
 				if (this->isValidRequestwithConfig(*connection) != 0)
 				{
-					std::cout << "error in isValidRequestwithConfig!"<< std::endl;
+					std::cout << "error in isValidRequestwithConfig!" << std::endl;
 					return;
 				}
-				
+
 				if (this->isMultipart(*connection, location) == 0)
-					return ;
+					return;
 				if (this->isRedirect(*connection, location) == 0)
-					return ;
-				else if (this->isCgi(location, connection->getRequest())) 
+					return;
+				else if (this->isCgi(location, connection->getRequest()))
 					return;
 				else if (this->isAutoIndex(*connection, location) != 0)
 					return;
 				else
 					(this->defaultToHttpMethod(*connection, location));
-					return;
-				
+				return;
 			}
 		}
 		else if (monitor_fd->getType() == FILE_FDTYPE)
 		{
 			std::cout << "FILE_FDTYPE - READ" << std::endl;
-			if(monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data)==404)
+			if (monitor_fd->getConnection()->getResponse().makeGetHeadResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest(), monitor_event->data) == 404)
 				return;
 		}
 		else if (monitor_fd->getType() == CGI_READ_FDTYPE)
 		{
-			if(monitor_fd->getConnection()->getResponse().makeCgiResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest())==404)
+			if (monitor_fd->getConnection()->getResponse().makeCgiResponse(monitor_event->ident, monitor_fd->getConnection()->getRequest()) == 404)
 				return;
 		}
 		else if (monitor_fd->getType() == ERROR_FILE_FDTYPE)
 		{
-			if(monitor_fd->getConnection()->getResponse().makeErrorFileResponse(monitor_event->ident)==404)
+			if (monitor_fd->getConnection()->getResponse().makeErrorFileResponse(monitor_event->ident) == 404)
 				return;
 		}
 	}
@@ -977,7 +981,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 			{
 				// std::cout << "(Write Event)::: changeList- " << this->getKq().getChangeList().size() << std::endl;
 				std::cout << "----->Now time to RESPONSE_COMPLETE\n";
-				if(this->sendResponse(*connection, monitor_event->ident)==404)
+				if (this->sendResponse(*connection, monitor_event->ident) == 404)
 					return;
 			}
 		}
@@ -989,12 +993,12 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 		}
 		else if (monitor_fd->getType() == CGI_WRITE_FDTYPE)
 		{
-			if(this->writeOnPipe(monitor_fd, monitor_event->ident) ==404)
+			if (this->writeOnPipe(monitor_fd, monitor_event->ident) == 404)
 				return;
 		}
 		else if (monitor_fd->getType() == UPLOAD_FILE_FDTYPE)
 		{
-			if(this->makeUploadResponse(monitor_fd, monitor_event->ident) ==404)
+			if (this->makeUploadResponse(monitor_fd, monitor_event->ident) == 404)
 				return;
 		}
 	}

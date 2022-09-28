@@ -388,7 +388,7 @@ void Request::parseMultipart(void)
 	this->raw_body = json;
 	
 	if (upload_file_list.size() == 0)
-		this->connection->getResponse().makeMultipartResponse();
+		this->connection->getResponse().makeMultipartResponse("NO_UPLOAD");
 	else
 	{
 		KqueueMonitoredFdInfo *multipart_fdtype = new KqueueMonitoredFdInfo(UPLOAD_FILE_FDTYPE, this->getConnection(), upload_file_list);

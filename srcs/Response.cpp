@@ -194,7 +194,6 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 
 void Response::makeResponse(std::string method)
 {
-	(void)method;
 	// std::cout << "status: " <<  this->status << std::endl;
 	/* HEADER */
 	if (this->headers.find("Content-Length") == this->headers.end())
@@ -204,6 +203,13 @@ void Response::makeResponse(std::string method)
 		ss << this->body.length();
 		ss >> str;
 		this->headers.insert(std::pair<std::string, std::string>("Content-Length", str));
+	}
+	if (this->headers.find("Content-Type") == this->headers.end())
+	{
+		if (method == "UPLOAD" || method == "NO_UPLOAD")
+			this->headers.insert(std::pair<std::string, std::string>("Content-Type", "application/json;charset=UTF-8"));
+		else
+			this->headers.insert(std::pair<std::string, std::string>("Content-Type", "text/html; charset=utf-8"));
 	}
 	if (this->start_line.find("HTTP") == std::string::npos)
 	{
@@ -258,12 +264,12 @@ void Response::makePostPutResponse()
 
 void Response::makeMultipartResponse(std::string uploaded)
 {
-	if (uploaded == "UPLOADED")
+	if (uploaded == "UPLOAD")
 		this->status = 201;
-	else
+	else if (uploaded == "NO_UPLOAD")
 		this->status = 200;
 	this->body = this->connection->getRequest().getRawBody();
-	this->makeResponse();
+	this->makeResponse(uploaded);
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
@@ -292,24 +298,23 @@ int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long cont
 		this->makeErrorResponse(500, NULL); // 500 Error
 		return 404;
 	}
-	buf[read_size] = '\0';
-	this->body += std::string(buf);
-	if (content_length - read_size > 0)
-		return 0;
+	else if (read_size >= 0)
+	{
+		buf[read_size] = '\0';
+		this->body += std::string(buf);
+		if (content_length - read_size > 0)
+			return 0;
 
-	Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
-	close(curr_event_fd);
+		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+		close(curr_event_fd);
 
-	std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
-	for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
-	// 	std::cout << iter->first << " AND, " << iter->second << std::endl;
-	// std::cout << "is this seen?\n";
+		// std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
+		for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
 
-	this->status = 200;
-	this->makeResponse();
-	// std::cout << "is this seen2 ?\n";
-	// std::cout << "[raw_response]\n" << this->raw_response << "\n";
-	request.getConnection()->setStatus(RESPONSE_COMPLETE);
+		this->status = 200;
+		this->makeResponse();
+		request.getConnection()->setStatus(RESPONSE_COMPLETE);
+	}
 	return 0;
 }
 
@@ -412,22 +417,26 @@ int Response::makeErrorFileResponse(int curr_event_fd)
 		std::cerr << "temporary resource read error!" << std::endl;
 		return 404;
 	}
-	buf[read_size] = 0;
-
-	this->connection->getResponse().getBody().append(buf);
-	if (read_size < BUFFER_SIZE)
+	else if (read_size >= 0)
 	{
-		std::stringstream ss;
-		ss << connection->getResponse().getBody().length();
-		connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("Content-Length", ss.str()));
-		connection->getResponse().makeResponse();
+		buf[read_size] = 0;
 
-		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
-		close(curr_event_fd);
+		this->connection->getResponse().getBody().append(buf);
+		if (read_size < BUFFER_SIZE)
+		{
+			std::stringstream ss;
+			ss << connection->getResponse().getBody().length();
+			connection->getResponse().getHeaders().insert(std::pair<std::string, std::string>("Content-Length", ss.str()));
+			connection->getResponse().makeResponse();
 
-		connection->setStatus(RESPONSE_COMPLETE);
+			Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
+			close(curr_event_fd);
+
+			connection->setStatus(RESPONSE_COMPLETE);
+		}
+		return 0;
 	}
-	return 0;
+	return 1;
 }
 
 // std::map<std::string, std::string> &Response::getMimeType()
@@ -445,10 +454,11 @@ void Response::initStatusCode(void)
 	this->status_code["100"] = "Continue";
 	this->status_code["101"] = "Switching Protocols";
 	this->status_code["102"] = "Processing";
-	this->status_code["200"] = "OK";
-	this->status_code["201"] = "Created";
+	this->status_code["103"] = "Early Hints";
+	this->status_code["200"] = "OK";//
+	this->status_code["201"] = "Created";//
 	this->status_code["202"] = "Accepted";
-	this->status_code["203"] = "Non-authoritative Information";
+	this->status_code["203"] = "Non-Authoritative Information";
 	this->status_code["204"] = "No Content";
 	this->status_code["205"] = "Reset Content";
 	this->status_code["206"] = "Partial Content";
@@ -456,34 +466,45 @@ void Response::initStatusCode(void)
 	this->status_code["208"] = "Already Reported";
 	this->status_code["226"] = "IM Used";
 	this->status_code["300"] = "Multiple Choices";
-	this->status_code["301"] = "Moved Permanently";
+	this->status_code["301"] = "Moved Permanently";//
 	this->status_code["302"] = "Found";
 	this->status_code["303"] = "See Other";
 	this->status_code["304"] = "Not Modified";
-	this->status_code["305"] = "Use Proxy";
+	this->status_code["305"] = "Use Proxy Deprecated";
+	this->status_code["306"] = "unused";
 	this->status_code["307"] = "Temporary Redirect";
 	this->status_code["308"] = "Permanent Redirect";
-	this->status_code["400"] = "Bad Request";
+	this->status_code["400"] = "Bad Request";//
 	this->status_code["401"] = "Unauthorized";
-	this->status_code["402"] = "Payment Required";
+	this->status_code["402"] = "Payment Required Experimental";
 	this->status_code["403"] = "Forbidden";
-	this->status_code["404"] = "Not found";
-	this->status_code["405"] = "Method Not Allowed";
+	this->status_code["404"] = "Not Found";//
+	this->status_code["405"] = "Method Not Allowed";//
 	this->status_code["406"] = "Not Acceptable";
 	this->status_code["407"] = "Proxy Authentication Required";
-	this->status_code["408"] = "Required Timeout";
+	this->status_code["408"] = "Request Timeout";
 	this->status_code["409"] = "Conflict";
 	this->status_code["410"] = "Gone";
 	this->status_code["411"] = "Length Required";
 	this->status_code["412"] = "Precondition Failed";
-	this->status_code["413"] = "Request Entity Too Large";
-	this->status_code["414"] = "Request URI Too Long";
+	this->status_code["413"] = "Payload Too Large";//
+	this->status_code["414"] = "URI Too Long";
 	this->status_code["415"] = "Unsupported Media Type";
-	this->status_code["416"] = "Requested Range Not Satisfiable";
+	this->status_code["416"] = "Range Not Satisfiable";
 	this->status_code["417"] = "Expectation Failed";
-	this->status_code["418"] = "IM_A_TEAPOT";
-	this->status_code["500"] = "Internal Server Error";
-	this->status_code["501"] = "Not Implemented";
+	this->status_code["418"] = "I'm a teapot";
+	this->status_code["421"] = "Misdirected Request";
+	this->status_code["422"] = "Unprocessable Entity";
+	this->status_code["423"] = "Locked";
+	this->status_code["424"] = "Failed Dependency";
+	this->status_code["425"] = "Too Early Experimental";
+	this->status_code["426"] = "Upgrade Required";
+	this->status_code["428"] = "Precondition Required";
+	this->status_code["429"] = "Too Many Requests";
+	this->status_code["431"] = "Request Header Fields Too Large";
+	this->status_code["451"] = "Unavailable For Legal Reasons";
+	this->status_code["500"] = "Internal Server Error";//
+	this->status_code["501"] = "Not Implemented";//
 	this->status_code["502"] = "Bad Gateway";
 	this->status_code["503"] = "Service Unavailable";
 	this->status_code["504"] = "Gateway Timeout";
@@ -491,7 +512,6 @@ void Response::initStatusCode(void)
 	this->status_code["506"] = "Variant Also Negotiates";
 	this->status_code["507"] = "Insufficient Storage";
 	this->status_code["508"] = "Loop Detected";
-	this->status_code["510"] = "Not Extened";
+	this->status_code["510"] = "Not Extended";
 	this->status_code["511"] = "Network Authentication Required";
-	this->status_code["599"] = "Network Connect Timeout Error";
 }

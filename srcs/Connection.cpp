@@ -82,6 +82,7 @@ int Connection::readRequest(void)
 	int readed;
 
 	readed = recv(this->socket_fd, &buf, sizeof(buf), 0);
+	std::cout << "readed: " << readed << std::endl;
 	if (readed > 0)
 	{
 		buf[readed] = 0;
@@ -94,8 +95,13 @@ int Connection::readRequest(void)
 			return true;
 		}
 	}
-	if (readed <= 0) // readed == 0일때
-	{
+	else if (readed == 0) // readed == 0일때
+	{	
+		std::cerr << "Connection readed == 0" << std::endl;
+		return (DISCONNECT_CONNECTION);
+	}
+	else if (readed < 0)
+	{	
 		std::cerr << "Connection read error!" << std::endl;
 		return (DISCONNECT_CONNECTION);
 	}
