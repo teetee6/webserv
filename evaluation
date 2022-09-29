@@ -1,0 +1,47 @@
+[평가 중 사용할 url 및 명령어 참고]
+
+
+make re && ./webserv configs/default_test.conf
+
+curl --resolve localhost:8283:127.0.0.1 localhost:8283
+curl --resolve newDomain:8283:127.0.0.1 newDomain:8283
+
+error_page 404 ./static/404.html
+error_page 405 ./static/404.html
+
+http://localhost:8283/post_limit/        body_limit_size 100
+
+
+curl http://localhost:8283/
+curl http://localhost:8283/index.html
+curl http://localhost:8283/default.html
+
+curl http://localhost:8283/auto_index/
+
+curl -X GET http://localhost:8283/
+curl -X POST http://localhost:8283/post/asdf -d "aaa"
+curl -X DELETE http://localhost:8283/delete/asdf
+curl -X UNKNOWN http://localhost:8283/
+upload는 postman
+
+
+curl -X GET http://localhost:8283/wrongRequest
+curl http://localhost:8283/auto_index/
+curl http://localhost:8283/redirect_test/
+
+
+
+
+
+make re && ./webserv configs/default_test.conf
+curl http://localhost:8283/
+curl http://localhost:8284/
+curl http://localhost:8285/
+
+
+
+make re && ./webserv configs/test.conf
+./tester http://localhost:8283
+./siege http://localhost:8283/siege.html
+
+
