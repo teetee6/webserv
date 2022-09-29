@@ -1,0 +1,82 @@
+[postman url]
+
+[default_test.conf] localhost:8283
+
+/ get
+http://localhost:8283/ 200
+http://localhost:8283/index.html 200
+http://localhost:8283/default.html 200
+http://localhost:8283/youpi.php 200
+http://localhost:8283/youpi.py 200
+
+/auto_index get
+http://localhost:8283/auto_index/ 200
+http://localhost:8283/auto_index/tmp 200
+
+method now alloed - 405
+
+/cgi get post put 오토인덱스?
+http://localhost:8283/cgi/youpi.php 200
+http://localhost:8283/cgi/youpi.py 200
+/cgi post put 오인ㅔㄱ스?
+http://localhost:8283/cgi/youpi.php 200
+http://localhost:8283/cgi/youpi.py 200
+
+(only MULTIPART)
+/upload/ post 오토인덱스? 
+http://localhost:8283/upload/ 멀티파트만 가능
+
+(must not MULTIPART) -내가 m1이라서 나만 터짐
+[[멀티파트에 파일이 1개일때는 잘 들어갔음]]
+이미 존재하는 파일 post시 400
+/post/  post (only rawData)
+http://localhost:8283/post/ 404 not found
+http://localhost:8283/post/file 201
+http://localhost:8283/post/folder/ 201(none data; 폴더 안_만들어짐), 500(폴더 만들어짐)
+http://localhost:8283/post/folder/file 201
+http://localhost:8283/post/folder/file/folder 500
+http://localhost:8283/post/folder/file/folder/ 500
+http://localhost:8283/post/folder/file/folder/file 500 
+
+(must not MULTIPART)
+/put/ put
+http://localhost:8283/put/ 400
+http://localhost:8283/put/file 201
+http://localhost:8283/put/folder/ 500(none data; 폴더 만들어짐), 500(폴더 만들어짐)
+http://localhost:8283/put/folder/file 201
+http://localhost:8283/put/folder/file/folder 500
+http://localhost:8283/put/folder/file/folder/ 500
+http://localhost:8283/put/folder/file/folder/file 500
+
+(must not MULTIPART)
+/delete/  delete
+http://localhost:8283/delete/ 200 (있던없던 200)
+http://localhost:8283/delete/folder 200 (없었으면 500)
+http://localhost:8283/delete/folder/file 200 (없었으면 500)
+
+(must not MULTIPART)
+/redirect_test/   get
+http://localhost:8283/redirect_test/ 200 (바꿔야함)
+
+
+
+[default_test.conf] localhost:8284
+
+/ get 
+http://localhost:8284/ 200 400 200
+http://localhost:8284/index.html 200 201 201
+(데이터있을때-) pending 201 400
+http://localhost:8284/default.html 
+위와 동일
+
+/upload_delete/ delete
+http://localhost:8284/upload/delete/ 200
+http://localhost:8284/upload/delete 200
+http://localhost:8284/upload/delete/file_name? 200
+
+
+
+
+
+
+[test.conf] localhost:8283
