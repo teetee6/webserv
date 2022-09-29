@@ -1,6 +1,3 @@
-// KqueueMonitoredFdInfo-> connection -> request msg->connection-> Request
-// KqueueMonitoredFdInfo-> connection -> response msg ->connection-> Response
-
 #ifndef KQUEUEMONITOREDFDINFO_HPP
 #define KQUEUEMONITOREDFDINFO_HPP
 #include <string>
@@ -18,7 +15,7 @@ typedef enum e_status
 	RESPONSE_COMPLETE,
 } t_status;
 
-typedef enum e_FDType
+typedef enum e_KqueueMonitoredFdInfo
 {
 	SERVER_FDTYPE,
 	CONNECTION_FDTYPE,

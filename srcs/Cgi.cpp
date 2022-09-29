@@ -40,11 +40,10 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 	{
 		std::string file_path = request.getUri();
 
-		//url뒷부분 ex. asdf.bla
-		file_path = file_path.substr(location.getLocationName().length()); // location경로
-		file_path = location.getRoot() + file_path; // root+location경로
+		file_path = file_path.substr(location.getLocationName().length());
+		file_path = location.getRoot() + file_path;
 
-		char *buf = realpath(file_path.c_str(), NULL); //절대경로로 변환
+		char *buf = realpath(file_path.c_str(), NULL);
 		if (buf != NULL)
 			file_path = std::string(buf);
 		free(buf);
@@ -95,10 +94,6 @@ void Cgi::cgiPipeFdSet(Request &request, Location &location, std::string &file_n
 
 		if (is_post)
 		{
-				// std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!DATA!!!!!!\n";
-				// std::cout << request.getRawBody() << std::endl;
-				// std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
-
 			KqueueMonitoredFdInfo *pipe_fd = new KqueueMonitoredFdInfo(CGI_WRITE_FDTYPE, request.getConnection(), this->pid, request.getRawBody());
 			Webserver::getWebserverInst()->setFdMap(this->request_fd[1], pipe_fd);
 			Webserver::getWebserverInst()->getKq().createChangeListEvent(this->request_fd[1], "W");
@@ -140,7 +135,7 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 		path_info = request.getUri();
 
 
-	cgi_env.insert(std::pair<std::string, std::string>("PATH_INFO", path_info)); // 잠시
+	cgi_env.insert(std::pair<std::string, std::string>("PATH_INFO", path_info));
 	cgi_env.insert(std::pair<std::string, std::string>("PATH_TRANSLATED", location.getRoot() + path_info.substr(1)));
 
 	cgi_env.insert(std::pair<std::string, std::string>("REQUEST_METHOD", request.getMethod()));
@@ -167,9 +162,6 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	{
 		std::string tmp_str = iter->first;
 		std::transform(tmp_str.begin(), tmp_str.end(), tmp_str.begin(), ::toupper);
-		// for(std::string::iterator iter=tmp_str.begin();iter != tmp_string.end(); iter++)
-		// {
-		// }
 		size_t tmp_idx = tmp_str.find('-');
 		while(tmp_idx != std::string::npos)
 		{
@@ -178,7 +170,6 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 		}
 		cgi_env.insert(std::pair<std::string, std::string>("HTTP_" + tmp_str, iter->second));
 	}
-
 
 	env = (char **)malloc(sizeof(char *) * (cgi_env.size() + 1));
 	for (std::map<std::string, std::string>::iterator iter = cgi_env.begin(); iter != cgi_env.end(); iter++)
@@ -189,6 +180,4 @@ char **Cgi::setCgiEnvironment(Request &request, Location &location, std::string 
 	}
 	env[i] = NULL;
 	return (env);
-
-
 }

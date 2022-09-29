@@ -1,8 +1,3 @@
-// kqueue() = 정의
-// kqueue() = 생성
-// kqueue() = EV_SET
-// kqueue() = eventlist에 이벤트 할당
-
 #include "Kqueue.hpp"
 
 Kqueue::Kqueue()
@@ -13,7 +8,6 @@ Kqueue::Kqueue()
 Kqueue::Kqueue(const Kqueue &src)
 {
 	this->kq = src.kq;
-	// this->return_events = src.return_events;
 	this->change_list = src.change_list;
 }
 
@@ -22,7 +16,6 @@ Kqueue::~Kqueue() {}
 Kqueue &Kqueue::operator=(const Kqueue &src)
 {
 	this->kq = src.kq;
-	// this->return_events = src.return_events;
 	this->change_list = src.change_list;
 	return (*this);
 }
@@ -71,6 +64,4 @@ void Kqueue::createChangeListEvent(int fd, std::string mode, std::string disable
 			EV_SET(&event, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, NULL, NULL, NULL);
 		this->pushChangeList(event);
 	}
-	// std::cout << "fd(" << fd << ")를\t" << mode << "모드로 Event 등록!" << std::endl;
-	// std::cout << "Kqueue::: changeList- " << this->getChangeList().size() << std::endl;
 }

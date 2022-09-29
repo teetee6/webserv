@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <vector>
 
+
 void debug()
 {
 	std::vector<Server> servers = Webserver::getWebserverInst()->getRealServer();
@@ -30,8 +31,6 @@ void debug()
 			{
 				std::cout << *it3 << " ";
 			}
-			std::cout << std::endl;
-			std::cout << "Auth Key: " << location.getAuthKey();
 			std::cout << std::endl;
 			std::cout << "Auto Index: " << (location.getAutoIndex() ? "on" : "off");
 			std::cout << std::endl;
@@ -62,8 +61,6 @@ void debug()
 			std::cout << "bodyLimitSize: " << location.getBodyLimitSize();
 			std::cout << std::endl;
 			std::cout << "root: " << location.getRoot();
-			std::cout << std::endl;
-			std::cout << "upload Path: " << location.getUploadPath();
 			std::cout << std::endl;
 
 			std::cout << std::endl << std::endl;

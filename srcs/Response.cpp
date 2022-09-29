@@ -8,11 +8,10 @@
 
 Response::Response()
 {
+	this->initStatusCode();
 	this->status = DEFAULT_STATUS;
 	this->connection = NULL;
 	this->res_idx = 0;
-	// this->initMimeType();
-	this->initStatusCode();
 }
 
 Response::~Response()
@@ -80,24 +79,19 @@ void Response::createErrorPage(int status)
 }
 
 void Response::makeRedirectResponse(Location &location)
-{ //리다이렉션할때 this->header에 값 집어넣고, 그것들을 포맷바궈써 this->rawresponse애 재할당 메시지 생성
+{
 	this->status = location.getRedirectReturn();
 	this->headers.insert(std::pair<std::string, std::string>("Location", location.getRedirectAddr()));
 	this->makeResponse();
-	std::cout << this->getRawResponse() << std::endl;
 	this->connection->setStatus(RESPONSE_COMPLETE);
 }
 
-
-// parse into this->headers and this->body, and then merge into this->raw_response
 void Response::makeErrorResponse(int status, Location *location)
 {
 	this->status = status;
 
-	// default ErrorPage
 	if (location == NULL || location->getErrorPages().count(status) == 0)
 	{
-		std::cout << "there is no errorpage\n";
 		this->createErrorPage(status);
 		std::stringstream ss;
 		std::string str;
@@ -108,12 +102,8 @@ void Response::makeErrorResponse(int status, Location *location)
 		this->connection->setStatus(RESPONSE_COMPLETE);
 		return;
 	}
-	// specific ErrorPage
 	else
 	{
-		std::cout << "there is errorpage\n";
-		std::cout << location->getErrorPages()[status] << std::endl;
-		// std::cout << "YES\n";
 		int error_file_fd = open(location->getErrorPages()[status].c_str(), O_RDONLY);
 		if (error_file_fd == -1)
 		{
@@ -142,7 +132,6 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 		this->makeErrorResponse(500, &location);
 		return;
 	}
-
 	this->body = std::string("<html>\r\n") +std::string("<head>\r\n") +std::string("<title>Index of " + uri + "</title>\r\n") +std::string("<meta charset='UTF-8'>") +std::string("</head>\r\n") +std::string("<body bgcolor=\"white\">\r\n") +std::string("<h1>Index of " + uri + "</h1>\r\n") +std::string("<hr>\r\n") +std::string("<pre>\r\n");
 
 	while ((file = readdir(dir_ptr)) != NULL)
@@ -195,8 +184,6 @@ void Response::makeAutoIndexResponse(std::string &path, const std::string &uri, 
 
 void Response::makeResponse(std::string method)
 {
-	// std::cout << "status: " <<  this->status << std::endl;
-	/* HEADER */
 	if (this->headers.find("Content-Length") == this->headers.end())
 	{
 		std::stringstream ss;
@@ -218,13 +205,11 @@ void Response::makeResponse(std::string method)
 		std::string str;
 		ss << this->status;
 		ss >> str;
-		// std::cout << this->status << std::endl;
-		// std::cout << str << std::endl;
 		std::map<std::string, std::string>::const_iterator iter = this->getStatusCode().find(str);
 		
 		if (iter == this->getStatusCode().end())
 		{
-			std::cout << "No Such code\n";
+			std::cerr << "No Such code\n";
 			return;
 		}
 		this->start_line += "HTTP/1.1 ";
@@ -232,7 +217,6 @@ void Response::makeResponse(std::string method)
 		this->start_line += " ";
 		this->start_line += iter->second;
 	}
-	// std::cout << "Start Line: " <<  this->start_line << std::endl;
 	
 	this->raw_response += this->start_line;
 	this->raw_response += "\r\n";
@@ -244,13 +228,9 @@ void Response::makeResponse(std::string method)
 		this->raw_response += iter->second;
 		this->raw_response += "\r\n";
 	}
-	// std::cout << "[header to raw_response:]\n" <<  this->raw_response << std::endl;
 
 	this->raw_response += "\r\n";
 	this->raw_response += this->body;
-	// std::cout << "[the last raw_response:]\n" <<  this->raw_response << std::endl;
-
-	/* BODY */
 }
 void Response::makePostPutResponse()
 {
@@ -272,7 +252,7 @@ void Response::makeMultipartResponse(std::string uploaded)
 }
 
 void Response::makeDeleteResponse()
-{ // delete 응답메시지 생성
+{
 	this->status = 200;
 	this->makeResponse();
 	this->connection->setStatus(RESPONSE_COMPLETE);
@@ -280,20 +260,15 @@ void Response::makeDeleteResponse()
 
 int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long content_length)
 {
-	// std::cout << "FILE_FDTYPE READ!!!\n";
-	// std::cout << "read from [" << curr_event_fd << "]\n";
-	// std::cout << content_length << std::endl;
 	char buf[BUFFER_SIZE];
 	int read_size;
 
-	std::cout << "content-length: " << content_length << std::endl;
 	read_size = read(curr_event_fd, buf, BUFFER_SIZE - 1);
-	std::cout << "Read_size: " << read_size << std::endl;
 	if (read_size == -1)
 	{
 		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
 		close(curr_event_fd);
-		this->makeErrorResponse(500, NULL); // 500 Error
+		this->makeErrorResponse(500, NULL);
 		return 500;
 	}
 	else if (read_size >= 0)
@@ -306,7 +281,6 @@ int Response::makeGetHeadResponse(int curr_event_fd, Request &request, long cont
 		Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
 		close(curr_event_fd);
 
-		// std::cout << "now I deleted the resource fd on fd_map, close the resource [" << curr_event_fd << "]\n";
 		for (std::map<int, KqueueMonitoredFdInfo *>::iterator iter = Webserver::getWebserverInst()->getFdMap().begin(); iter != Webserver::getWebserverInst()->getFdMap().end(); ++iter)
 
 		this->status = 200;
@@ -330,7 +304,6 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 	buf[read_size] = '\0';
 
 	this->cgi_raw += buf;
-	// std::cout << "buf = " << buf << std::endl;
 	if (read_size != 0)
 		return 0;
 	Webserver::getWebserverInst()->unsetFdMap(curr_event_fd);
@@ -341,22 +314,14 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 		if (cgi_raw.substr(14, 3) == "PHP")
 			cgi_raw = cgi_raw.substr(cgi_raw.find("\r\n\r\n") + 4);
 	}
-
-	// status-line
 	std::vector<std::string> status_line;
 	std::size_t status_sep = cgi_raw.find("\r\n");
-	// ft_split(cgi_raw.substr(0, status_sep), " ", status_line);
 	{
 		std::istringstream	iss(cgi_raw.substr(0, status_sep));
 		std::string			elem;
 		while (iss >> elem)
 			status_line.push_back(elem);
 	}
-	// for(std::vector<std::string>::iterator it = status_line.begin(); it != status_line.end(); it++)
-	// {
-	// 	std::cout << "{" << *it << "} ";
-	// }
-	// std::cout << std::endl;
 	if (status_line.size() < 2)
 	{
 		this->makeErrorResponse(500, NULL);
@@ -364,22 +329,14 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 	}
 	this->status = atoi(status_line[1].c_str());
 
-	// Header
 	std::vector<std::string> header_line;
 	std::size_t header_sep = cgi_raw.find("\r\n\r\n");
-	// ft_split(cgi_raw.substr(status_sep + 2, header_sep - status_sep - 2), " ", header_line);
 	{
 		std::istringstream	iss(cgi_raw.substr(status_sep + 2, header_sep - status_sep - 2));
 		std::string			elem;
 		while (iss >> elem)
 			header_line.push_back(elem);
 	}
-	// for(std::vector<std::string>::iterator it = header_line.begin(); it != header_line.end(); it++)
-	// {
-	// 	std::cout << "{" << *it << "} ";
-	// }
-	// std::cout << std::endl;
-	
 	std::vector<std::string>::iterator it;
 	for (it = header_line.begin(); it != header_line.end(); it++)
 	{
@@ -393,7 +350,6 @@ int Response::makeCgiResponse(int curr_event_fd, Request &request)
 	if(it != header_line.end())
 		this->headers.insert(std::pair<std::string, std::string>("Content-Type", *it));
 
-	// Body
 	if (cgi_raw.length() > header_sep + 4)
 		this->body = cgi_raw.substr(header_sep + 4);
 	else
@@ -436,11 +392,6 @@ int Response::makeErrorFileResponse(int curr_event_fd)
 	}
 	return 1;
 }
-
-// std::map<std::string, std::string> &Response::getMimeType()
-// {
-// 	return (this->mime_type);
-// }
 
 std::map<std::string, std::string> &Response::getStatusCode()
 {

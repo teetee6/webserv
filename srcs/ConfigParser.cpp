@@ -18,7 +18,7 @@ static bool inLocationKeyword(const std::string &src)
 {
 	if (src == "error_page" || src == "allow_methods" ||
 		src == "root" || src == "index" ||
-		src == "upload_path" ||	src == "auto_index" ||
+		src == "auto_index" ||
 		src == "body_limit_size" ||
 		src == "cgi_path" || src == "return")
 		return (true);
@@ -153,9 +153,6 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 								if (server_list[server_index].getLocations()[location_name].getIndex().size() == 0) 
 									throw syntax_err_msg;
 							}
-							// else if (elem.compare("upload_path"))
-							// {
-							// }
 							else if (elem.compare("auto_index") == 0)
 							{
 								if (!(iss >> elem)) throw syntax_err_msg;
@@ -174,12 +171,6 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 
 								server_list[server_index].getLocations()[location_name].setBodyLimitSize(static_cast<int>(limit_size));
 							}
-							// else if (elem.compare("authorization") == 0)
-							// {
-							// 	if (!(iss >> elem)) throw syntax_err_msg;
-
-							// 	server_list[server_index].getLocations()[location_name].setAuthKey(elem);
-							// }
 							else if (elem.compare("cgi_path") == 0)
 							{
 								if (!(iss >> elem)) throw syntax_err_msg;
@@ -223,13 +214,11 @@ bool ConfigParser::parseConfig(const char *config_file_path)
 									throw syntax_err_msg;
 									return 0;
 								}
-
 								server_list[server_index].setPort(static_cast<unsigned short>(value));
 
 								if (!(iss >> elem)) throw syntax_err_msg;
 								server_list[server_index].setIP(elem);
 							}
-							// server_list[server_index].getLocations[loc경로].getAllowMethods().push_back(*iter);
 							else if (elem.compare("location") == 0)
 							{
 								if (!(iss >> elem)) throw syntax_err_msg;

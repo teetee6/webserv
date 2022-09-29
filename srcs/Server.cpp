@@ -74,8 +74,7 @@ int Server::getSocketFd() const
 }
 
 std::map<std::string, Location> &Server::getLocations()
-{ // location map<string,location> 리턴 할때 없으니까 map이라서 인스생성하는듯
-
+{
 	return (this->locations);
 }
 
@@ -97,8 +96,7 @@ int Server::createConnection(int server_fd)
 		return (-1);
 	}
 	
-	std::cout << "I have to answer to [" << connection_fd << "], and my serverFd was "<< server_fd <<"\n";
-
+	// std::cout << "I have to answer to [" << connection_fd << "], and my serverFd was "<< server_fd <<"\n";
 	fcntl(connection_fd, F_SETFL, O_NONBLOCK);
 	struct timeval timeout;
 	timeout.tv_sec = 10;
@@ -108,7 +106,7 @@ int Server::createConnection(int server_fd)
 
 	this->connections[connection_fd].setServerFd(server_fd);
 	this->connections[connection_fd].setConnectionFd(connection_fd);
-	this->connections[connection_fd].setStatus(REQUEST_RECEIVING); // 요청 중 or 요청 끝 or 응답 끝
+	this->connections[connection_fd].setStatus(REQUEST_RECEIVING);
 	this->connections[connection_fd].setServer(*this);
 
 	KqueueMonitoredFdInfo *connection_fd_instance = new KqueueMonitoredFdInfo(CONNECTION_FDTYPE, &this->connections[connection_fd]);

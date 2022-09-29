@@ -11,11 +11,9 @@ class Request;
 class Cgi
 {
 private:
-	//////////////////////////////////////////
 	int request_fd[2];
 	int response_fd[2];
 	pid_t pid;
-	//////////////////////////////////////////
 
 public:
 	Cgi(void);

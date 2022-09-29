@@ -57,7 +57,6 @@ std::string &Request::getRawRequest(void)
 
 const std::string &Request::getMethod(void) const
 {
-
 	return (this->method);
 }
 
@@ -142,13 +141,13 @@ void Request::initRequest(void)
 
 bool Request::parseRequest(void)
 {
-	std::size_t index = this->raw_request.find("\r\n\r\n"); // the location of the boundary between HEADER and BODY
+	std::size_t index = this->raw_request.find("\r\n\r\n");
 
 	if (index != std::string::npos && this->parse_status == PARSING_HEADER)
 	{
 		this->parseHeaders();
 		this->parse_status = PARSING_BODY;
-		int _body_type = this->setBodyType(); // CHUNKED or NOBODY or MULTIPART or CONTENT_LENGTH
+		int _body_type = this->setBodyType();
 		if (_body_type == NOBODY)
 		{
 			this->temp_body.clear();
@@ -159,7 +158,7 @@ bool Request::parseRequest(void)
 	{
 		this->temp_body += this->raw_request;
 		this->raw_request.clear();
-		bool is_parse_end = parseBody(); //요청 메시지 중 body부분 데이터를 this->raw_body에 할당
+		bool is_parse_end = parseBody();
 		return (is_parse_end);
 	}
 
@@ -191,19 +190,17 @@ void Request::parseHeaders(void)
 	std::size_t start_line_end = this->raw_request.find("\r\n");
 	std::string start_line = this->raw_request.substr(0, start_line_end);
 
-	// first line
 	this->setMethod(start_line);
 	this->setUri(start_line);
 	this->setHttpVersion(start_line);
 
-	// header line
 	if (this->raw_request.length() > (start_line_end + 2))
 		this->raw_request = this->raw_request.substr(start_line_end + 2);
 	else
 		this->raw_request = "";
 
-	this->raw_header = this->raw_request.substr(0, this->raw_request.find("\r\n\r\n") + 2); //요청메시지 맨끝에 \r\n포함
-
+	this->raw_header = this->raw_request.substr(0, this->raw_request.find("\r\n\r\n") + 2);
+	
 	while (this->raw_header.length())
 	{
 		std::size_t line_end = this->raw_header.find("\r\n");
@@ -237,14 +234,8 @@ void Request::parseHeaders(void)
 		this->raw_request = this->raw_request.substr(header_end + 4);
 	else
 		this->raw_request.clear();
-
-	for(std::multimap<std::string, std::string>::iterator it= this->headers.begin(); it != this->headers.end(); it++)
-	{
-		std::cout << "[[[[" << it->first << ", " << it->second << "]]]]\n";
-	}
 }
 
-// python(or php)에서 upload file 받아 처리하는거 multer같은거 찾아보자
 bool Request::setBodyType(void)
 {
 	std::map<std::string, std::string>::iterator iter;
@@ -256,11 +247,10 @@ bool Request::setBodyType(void)
 	if (iter != this->headers.end() && iter->second == "chunked")
 		return (this->body_type = CHUNKED);
 
-
 	iter = this->headers.find("content-length");
 	if (iter != this->headers.end())
 		return (this->body_type = CONTENT_LENGTH);
-	return (this->body_type); // nothing
+	return (this->body_type);
 }
 
 // {
@@ -384,7 +374,6 @@ void Request::parseMultipart(void)
 		json += std::string("},");
 		raw.erase(0, interval_idx + boundary.length() + 2);
 	}
-	std::cout << json << std::endl;
 	this->raw_body = json;
 	
 	if (upload_file_list.size() == 0)
@@ -402,8 +391,6 @@ void Request::parseMultipart(void)
 	}
 }
 
-
-// only fill into this->rawbody
 bool Request::parseBody(void)
 {
 	std::multimap<std::string, std::string>::iterator iter;
@@ -413,21 +400,13 @@ bool Request::parseBody(void)
 	if (iter != this->headers.end())
 		content_length = atoi(iter->second.c_str());
 
-	std::cout << this->temp_body.length() << ", total content_length: " << content_length << std::endl;
-
 	if (this->body_type == MULTIPART || this->body_type == CONTENT_LENGTH)
 	{
 		if (this->temp_body.length() >= content_length)
 		{
 			this->raw_body += this->temp_body.substr(0, content_length);
 			this->temp_body.clear();
-			this->parse_status = PARSING_HEADER;
-			
-			std::cout << "\x1b[33m" << "파싱 끝났어 진행해\n" << "\x1b[0m";
-			std::cout << "\x1b[32m""[complete data]----------------------------------------\n";
-			std::cout << this->getRawBody() << std::endl;
-			std::cout << this->getRawBody().length() << std::endl;
-			std::cout << "----------------------------------------[complete data-here]\n""\x1b[0m";
+			this->parse_status = PARSING_HEADER;			
 			return (true);
 		}
 		return (false);

@@ -1,10 +1,8 @@
 #include "Connection.hpp"
 #include "Server.hpp"
 
-Connection::Connection()
+Connection::Connection(): server_socket_fd(-1), socket_fd(-1)
 {
-	this->server_socket_fd = -1;
-	this->socket_fd = -1;
 	this->status = REQUEST_RECEIVING;
 	this->request.setConnection(this);
 	this->response.setConnection(this);
@@ -75,14 +73,12 @@ Server *Connection::getServer()
 	return (this->server);
 }
 
-// consider the situation of multiple requests.
 int Connection::readRequest(void)
 {
 	char buf[BUFFER_SIZE];
 	int readed;
 
 	readed = recv(this->socket_fd, &buf, sizeof(buf), 0);
-	std::cout << "readed: " << readed << std::endl;
 	if (readed > 0)
 	{
 		buf[readed] = 0;
@@ -95,9 +91,9 @@ int Connection::readRequest(void)
 			return true;
 		}
 	}
-	else if (readed == 0) // readed == 0일때
+	else if (readed == 0)
 	{	
-		std::cerr << "Connection readed == 0" << std::endl;
+		std::cout << "Connection readed == 0" << std::endl;
 		return (DISCONNECT_CONNECTION);
 	}
 	else if (readed < 0)
