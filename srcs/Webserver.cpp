@@ -951,6 +951,7 @@ void Webserver::execMonitoredEvent(struct kevent *monitor_event)
 			{
 				std::cout << "Request Uri: " << connection->getRequest().getUri() << std::endl;
 				Location &location = this->findLocation(*connection->getServer(), connection->getRequest().getUri());
+				std::cout << "location: " << location.getRoot() << location.getLocationName() << std::endl;
 				if (this->isValidRequestwithConfig(*connection) != 0)
 				{
 					std::cout << "error in isValidRequestwithConfig!" << std::endl;
